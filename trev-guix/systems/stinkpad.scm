@@ -40,9 +40,9 @@
  version-control
  video)
 
-(define root-uuid "4b3be666-93bc-49e1-b275-cfccbc9c2729")
-(define efi-uuid "4B66-8689")
-(define swap-uuid "f95483f8-7921-4f0f-b509-2752e67b7a2f")
+(define-public root-uuid "4b3be666-93bc-49e1-b275-cfccbc9c2729")
+(define-public efi-uuid "4B66-8689")
+(define-public swap-uuid "f95483f8-7921-4f0f-b509-2752e67b7a2f")
 
 (define nonguix-pubkey-file
   (plain-file

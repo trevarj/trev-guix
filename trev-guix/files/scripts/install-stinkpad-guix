@@ -1,17 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-source_channel_dir="/etc/trev-guix"
 source_dotfiles_dir="/etc/trev-dotfiles"
-target_channel_dir="/mnt/home/trev/Workspace/trev-guix"
+source_channels_file="/etc/guix/channels.scm"
 target_dotfiles_dir="/mnt/home/trev/Workspace/dotfiles"
-source_workspace_dir="/etc"
 target_workspace_dir="/mnt/home/trev/Workspace"
 system_expr="(@ (trev-guix systems stinkpad-niri) %stinkpad-niri)"
-system_config="$source_channel_dir/trev-guix/systems/stinkpad.scm"
-install_config="$target_channel_dir/trev-guix/systems/install-target.scm"
-source_guix_p2p_channel="$source_workspace_dir/guix-p2p/channel"
-target_guix_p2p_channel="$target_workspace_dir/guix-p2p/channel"
+target_channels_file="/mnt/home/trev/.config/guix/channels.scm"
 
 die() {
   printf 'error: %s\n' "$*" >&2
@@ -20,11 +15,6 @@ die() {
 
 require_root() {
   [ "$(id -u)" -eq 0 ] || die "run this command as root"
-}
-
-read_uuid() {
-  name="$1"
-  sed -n "s/^(define ${name} \"\\([^\"]*\\)\")/\\1/p" "$system_config"
 }
 
 partition_path() {
@@ -57,6 +47,20 @@ copy_checkout() {
   cp -aL --no-preserve=ownership "$source/." "$target/"
 }
 
+read_channel_string() {
+  variable="$1"
+  script="$(mktemp)"
+
+  cat > "$script" <<EOF
+(define module (resolve-interface '(trev-guix systems stinkpad)))
+(display (module-ref module '$variable))
+(newline)
+EOF
+
+  guix repl -q -- "$script"
+  rm -f "$script"
+}
+
 require_network() {
   state="$(connmanctl state 2>/dev/null || true)"
 
@@ -70,37 +74,40 @@ require_network() {
 
 require_root
 
-[ -d "$source_channel_dir" ] || die "$source_channel_dir is missing"
 [ -d "$source_dotfiles_dir" ] || die "$source_dotfiles_dir is missing"
-[ -f "$system_config" ] || die "$system_config is missing"
+[ -f "$source_channels_file" ] || die "$source_channels_file is missing"
 
 if mountpoint -q /mnt; then
   die "/mnt is already mounted; unmount it before running the installer"
 fi
 
-for command in awk chown connmanctl cp cryptsetup guix id lsblk mkdir \
-  mkfs.ext4 mkfs.fat mkswap mount partprobe passwd sed sgdisk sleep swapoff \
-  swapon rm umount; do
+for command in awk cat chown connmanctl cp cryptsetup guix id lsblk mkdir \
+  mkfs.ext4 mkfs.fat mktemp mkswap mount partprobe passwd sgdisk sleep \
+  swapoff swapon rm umount; do
   require_command "$command"
 done
 
-root_uuid="$(read_uuid root-uuid)"
-efi_uuid="$(read_uuid efi-uuid)"
-swap_uuid="$(read_uuid swap-uuid)"
+require_network
+
+printf 'Pulling Guix channels from %s.\n' "$source_channels_file" >&2
+guix pull -C "$source_channels_file"
+
+GUIX_PROFILE="/root/.config/guix/current"
+. "$GUIX_PROFILE/etc/profile"
+hash -r
+
+root_uuid="$(read_channel_string root-uuid)"
+efi_uuid="$(read_channel_string efi-uuid)"
+swap_uuid="$(read_channel_string swap-uuid)"
 efi_volume_id="${efi_uuid//-/}"
 
-[ -n "$root_uuid" ] || die "could not read root-uuid from $system_config"
-[ -n "$efi_uuid" ] || die "could not read efi-uuid from $system_config"
-[ -n "$swap_uuid" ] || die "could not read swap-uuid from $system_config"
+[ -n "$root_uuid" ] || die "could not read root-uuid from channel"
+[ -n "$efi_uuid" ] || die "could not read efi-uuid from channel"
+[ -n "$swap_uuid" ] || die "could not read swap-uuid from channel"
 [ "${#efi_volume_id}" -eq 8 ] || die "EFI UUID must be an 8 digit FAT volume ID"
 
-printf 'Validating bundled Guix system configuration.\n' >&2
-if [ -d "$source_guix_p2p_channel" ]; then
-  guix system build -n -L "$source_channel_dir" -L "$source_guix_p2p_channel" \
-    -e "$system_expr"
-else
-  guix system build -n -L "$source_channel_dir" -e "$system_expr"
-fi
+printf 'Validating Guix system configuration from channels.\n' >&2
+guix system build -n -e "$system_expr"
 
 printf '\nCandidate target disks:\n' >&2
 mapfile -t disks < <(
@@ -142,8 +149,6 @@ read -r confirmation
 
 [ "$confirmation" = "WIPE $disk" ] || die "confirmation did not match"
 
-require_network
-
 printf 'Unmounting any stale target mounts.\n' >&2
 swapoff "$swap_part" >/dev/null 2>&1 || true
 umount -R /mnt >/dev/null 2>&1 || true
@@ -181,30 +186,17 @@ mkdir -p /mnt/boot/efi
 mount "$efi_part" /mnt/boot/efi
 mkdir -p "$target_workspace_dir"
 
-copy_checkout trev-guix "$source_channel_dir" "$target_channel_dir"
 copy_checkout dotfiles "$source_dotfiles_dir" "$target_dotfiles_dir"
 
-for checkout in guix-p2p; do
-  if [ -d "$source_workspace_dir/$checkout" ]; then
-    copy_checkout "$checkout" "$source_workspace_dir/$checkout" \
-      "$target_workspace_dir/$checkout"
-  fi
-done
+mkdir -p "$(dirname "$target_channels_file")"
+cp --no-preserve=ownership "$source_channels_file" "$target_channels_file"
 
 printf 'Installing Guix System target.\n' >&2
-if [ -d "$target_guix_p2p_channel" ]; then
-  guix system init -L "$target_channel_dir" -L "$target_guix_p2p_channel" \
-    "$install_config" /mnt
-else
-  guix system init -L "$target_channel_dir" "$install_config" /mnt
-fi
+guix system init -e "$system_expr" /mnt
 
-printf 'Making the copied checkout editable by trev.\n' >&2
-for checkout in trev-guix dotfiles guix-p2p; do
-  if [ -e "$target_workspace_dir/$checkout" ]; then
-    chown -R 1000:100 "$target_workspace_dir/$checkout"
-  fi
-done
+printf 'Making copied user files editable by trev.\n' >&2
+chown -R 1000:100 "$target_dotfiles_dir"
+chown -R 1000:100 "/mnt/home/trev/.config/guix"
 
 printf '\nSet the login password for trev.\n' >&2
 passwd -R /mnt trev
