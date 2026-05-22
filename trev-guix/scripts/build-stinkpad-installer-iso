@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "$script_dir/../.." && pwd)"
+output="${1:-$repo_root/stinkpad-installer.iso}"
+image_type="${STINKPAD_INSTALLER_IMAGE_TYPE:-iso9660}"
+
+die() {
+  printf 'error: %s\n' "$*" >&2
+  exit 1
+}
+
+command -v guix >/dev/null 2>&1 || die "missing required command: guix"
+
+cd "$repo_root"
+
+printf 'Building %s installer ISO at %s.\n' "$image_type" "$output" >&2
+guix system image \
+  -L . \
+  -t "$image_type" \
+  -r "$output" \
+  -e '(@ (trev-guix systems installer) %stinkpad-installer)'
+
+printf 'Installer ISO ready: %s\n' "$output" >&2
