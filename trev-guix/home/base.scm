@@ -58,6 +58,7 @@
      font-iotrevka
      font-nerd-symbols
      font-terminus
+     forgejo-cli
      fzf
      fzf-tab
      ;; fwupd-nonfree ; bringing in a lot of weird packages
