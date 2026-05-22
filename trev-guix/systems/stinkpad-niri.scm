@@ -4,8 +4,8 @@
   #:use-module (guix packages)
   #:use-module (nongnu packages linux)
   #:use-module (nongnu system linux-initrd)
-  #:use-module (trev-guix systems stinkpad)
-  #:use-module (trev-guix packages misc))
+  #:use-module (trev-guix packages desktop)
+  #:use-module (trev-guix systems stinkpad))
 
 (use-service-modules
  desktop
