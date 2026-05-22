@@ -35,7 +35,7 @@
              (commit "4e83cb82f977b4655997990c1bc07ab607bfba6d")))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1p35lxxrpgsf81g8p813qmc65fm6cy8gcqy9ff4hj7by1718i3p9"))))
+        (base32 "0vnp334jd4z01gf734f3mnskxijb36xr89jy421zz4wknp4p5pi6"))))
     (build-system copy-build-system)
     (arguments
      (list
