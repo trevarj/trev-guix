@@ -30,24 +30,14 @@
            (string-suffix? "/stinkpad-installer.iso" file)
            (path-component? "stinkpad-target-system" file))))
 
-(define (source-checkout-file? file stat)
-  (not (or (path-component? ".git" file)
-           (path-component? "target" file))))
-
-(define %trev-guix-checkout
-  (local-file "../.." "trev-guix"
-              #:recursive? #t
-              #:select? dotfiles-file?))
-
 (define %dotfiles-checkout
   (local-file "/home/trev/Workspace/dotfiles" "trev-dotfiles"
               #:recursive? #t
               #:select? dotfiles-file?))
 
-(define %guix-p2p-checkout
-  (local-file "../../../guix-p2p" "guix-p2p"
-              #:recursive? #t
-              #:select? source-checkout-file?))
+(define %channels-file
+  (local-file "/home/trev/Workspace/dotfiles/guix/.config/guix/channels.scm"
+              "channels.scm"))
 
 (define %host-torrc
   (local-file "/home/trev/.config/tor/torrc" "torrc"))
@@ -128,11 +118,8 @@
                   %default-authorized-guix-keys)))))
       (list
        (simple-service 'trev-guix-installer-sources etc-service-type
-                       (append
-                        `(("trev-guix" ,%trev-guix-checkout)
-                          ("trev-dotfiles" ,%dotfiles-checkout)
-                          ("guix-p2p"
-                           ,%guix-p2p-checkout))))
+                       `(("trev-dotfiles" ,%dotfiles-checkout)
+                         ("guix/channels.scm" ,%channels-file)))
        (extra-special-file "/home/trev/.config/tor/torrc"
                            %host-torrc))))
     (packages
