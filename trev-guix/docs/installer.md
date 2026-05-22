@@ -1,7 +1,7 @@
 # Custom Installer ISO
 
-The custom installer ISO bundles this Guix channel and the dotfiles checkout,
-then provides an
+The custom installer ISO bundles the channel configuration and dotfiles
+checkout, then provides an
 `install-stinkpad` command.
 
 The live installer inherits Nonguix `installation-os-nonfree`, using the
@@ -17,9 +17,9 @@ trev-guix/scripts/build-stinkpad-installer-iso
 
 The command creates `./stinkpad-installer.iso` as a symlink to the generated
 store item and keeps it as a GC root.  The ISO is slim: it bundles the
-installer, Guix channel, dotfiles, Guix P2P checkout, Nonguix firmware support, and
+installer, dotfiles, Nonguix firmware support, the channel configuration, and
 the configured substitute URLs, but it does not embed the target desktop
-closure.
+closure or copy the `trev-guix` checkout into the installed system.
 
 ## Write To USB
 
@@ -62,21 +62,21 @@ sudo install-stinkpad
 
 The helper will:
 
-- validate the bundled `stinkpad-niri` Guix system config
+- pull the configured Guix channels
+- validate the `stinkpad-niri` Guix system config from the `trevarj` channel
 - show candidate non-removable disks
 - ask which disk to wipe
 - require typing `WIPE /dev/...`
 - create the disk layout expected by `trev-guix/systems/stinkpad.scm`
 - mount the installed system at `/mnt`
-- copy the bundled Guix channel to `/mnt/home/trev/Workspace/trev-guix`
 - copy the bundled dotfiles to `/mnt/home/trev/Workspace/dotfiles`
-- copy the bundled Guix P2P checkout to `/mnt/home/trev/Workspace` when present
-- run `guix system init`
-- make the copied checkouts editable by `trev`
+- seed `/mnt/home/trev/.config/guix/channels.scm`
+- run `guix system init` from the pulled channels
+- make the copied user files editable by `trev`
 - ask you to set the `trev` login password
 
-The helper checks that Connman reports `State = online` after disk selection
-and before wiping the selected disk.
+The helper checks that Connman reports `State = online` before pulling
+channels and before any disk is wiped.
 
 The LUKS passphrase is entered interactively.  It is never stored in the repo
 or ISO.
@@ -93,8 +93,10 @@ unmounts `/mnt`, closes the LUKS root mapping, and reboots.
 On first boot, unlock the LUKS root, log in as `trev`, and activate Guix Home:
 
 ```sh
-cd ~/Workspace/trev-guix
-guix home reconfigure -L . -e '(@ (trev-guix home niri) %home-niri-environment)'
+guix pull -C ~/.config/guix/channels.scm
+GUIX_PROFILE="$HOME/.config/guix/current"
+. "$GUIX_PROFILE/etc/profile"
+guix home reconfigure -e '(@ (trev-guix home niri) %home-niri-environment)'
 niri-session
 ```
 
@@ -116,9 +118,9 @@ Current layout:
 - `/`: ext4 filesystem inside `/dev/mapper/root`
 - `swap`: 8 GiB swap partition using the configured swap UUID
 
-The installer formats the new disk with the UUIDs from the checked-in system
-configuration.  This keeps the installer from changing the currently installed
-system config.
+The installer formats the new disk with the UUIDs exported by the pulled
+`trevarj` channel.  This keeps the installer from generating machine-specific
+UUID changes during installation.
 
 ## Safety Notes
 
@@ -128,5 +130,5 @@ before confirming the `WIPE /dev/...` prompt.
 Do not boot the installed system while another attached disk has the same EFI,
 LUKS, or swap UUIDs.
 
-The ISO contains the Guix channel and dotfiles checkout.  Do not build or share
-it from a tree that contains secrets.
+The ISO contains dotfiles and channel configuration.  Do not build or share it
+from a tree that contains secrets.
