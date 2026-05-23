@@ -1,0 +1,15 @@
+name: Guix channel checks
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  channel:
+    runs-on: codeberg-medium
+    steps:
+      - name: Check out repository
+        uses: https://data.forgejo.org/actions/checkout@v4
+
+      - name: Check Guix channel packages
+        run: ./scripts/check-channel-packages --all
