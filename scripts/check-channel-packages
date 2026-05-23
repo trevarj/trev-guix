@@ -60,10 +60,10 @@ run_lint() {
 
   tmp="$(mktemp -t trev-guix-lint.XXXXXX)"
   say "Lint package metadata, derivations, and formatting"
-  printf '%s+%s guix lint -L . --no-network %s\n' "$blue" "$reset" "${expr_args[*]}"
+  printf '%s+%s guix lint %s --no-network %s\n' "$blue" "$reset" "${guix_load_path_args[*]}" "${expr_args[*]}"
 
   set +e
-  guix lint -L . --no-network "${expr_args[@]}" >"$tmp" 2>&1
+  guix lint "${guix_load_path_args[@]}" --no-network "${expr_args[@]}" >"$tmp" 2>&1
   exit_status="$?"
   set -e
 
@@ -95,7 +95,16 @@ need sed
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
 
-declare -a package_files expr_args labels
+declare -a package_files expr_args labels guix_load_path_args extra_load_paths
+guix_load_path_args=(-L .)
+
+if [[ -n "${GUIX_EXTRA_LOAD_PATHS:-}" ]]; then
+  IFS=':' read -r -a extra_load_paths <<< "$GUIX_EXTRA_LOAD_PATHS"
+  for path in "${extra_load_paths[@]}"; do
+    [[ -n "$path" ]] && guix_load_path_args+=(-L "$path")
+  done
+fi
+
 mapfile -t package_files < <(git ls-files 'trev-guix/packages/*.scm')
 
 (( ${#package_files[@]} > 0 )) || die "no package modules found under trev-guix/packages"
@@ -124,18 +133,18 @@ case "$mode" in
   --fast)
     run_lint
     run "Evaluate package build graph without building" \
-      guix build -L . -n --no-substitutes -k "${expr_args[@]}"
+      guix build "${guix_load_path_args[@]}" -n --no-substitutes -k "${expr_args[@]}"
     ;;
   --source)
     run "Fetch package sources and verify declared hashes" \
-      guix build -L . --source -k "${expr_args[@]}"
+      guix build "${guix_load_path_args[@]}" --source -k "${expr_args[@]}"
     ;;
   --all)
     run_lint
     run "Evaluate package build graph without building" \
-      guix build -L . -n --no-substitutes -k "${expr_args[@]}"
+      guix build "${guix_load_path_args[@]}" -n --no-substitutes -k "${expr_args[@]}"
     run "Fetch package sources and verify declared hashes" \
-      guix build -L . --source -k "${expr_args[@]}"
+      guix build "${guix_load_path_args[@]}" --source -k "${expr_args[@]}"
     ;;
   *)
     die "usage: scripts/check-channel-packages [--fast|--source|--all]"
