@@ -12,32 +12,47 @@ jobs:
         uses: https://data.forgejo.org/actions/checkout@v4
 
       - name: Install Guix
-        uses: https://github.com/PromyLOPh/guix-install-action@v1.6
-        with:
-          channels: |-
-            (list (channel
-                   (name 'guix)
-                   (url "https://codeberg.org/guix/guix.git")
-                   (branch "master")
-                   (commit "1cb710f1fba398c69f4bb4aed0f88ca0b56af56a")
-                   (introduction
-                    (make-channel-introduction
-                     "9edb3f66fd807b096b48283debdcddccfea34bad"
-                     (openpgp-fingerprint
-                      "BBB0 2DDF 2CEA F6A8 0D1D  E643 A2A0 6DF2 A33A 54FA"))))
-                  (channel
-                   (name 'nonguix)
-                   (url "https://gitlab.com/nonguix/nonguix")
-                   (branch "master")
-                   (commit "0107c1c4849460b567424ba2cdc8942294c7a611")
-                   (introduction
-                    (make-channel-introduction
-                     "897c1a470da759236cc11798f4e0a5f7d4d59fbc"
-                     (openpgp-fingerprint
-                      "2A39 3FFF 68F4 EF7A 3D29  12AF 6F51 20A0 22FB B2D5")))))
+        run: |
+          set -euxo pipefail
+
+          wget -nv 'https://ci.guix.gnu.org/search/latest/archive?query=spec:tarball+status:success+system:x86_64-linux+guix-binary.tar.xz' \
+            -O guix-binary-nightly.x86_64-linux.tar.xz
+
+          sudo tar --extract --file guix-binary-nightly.x86_64-linux.tar.xz \
+            -C / --no-overwrite-dir
+
+          sudo groupadd --system guixbuild || true
+          for i in $(seq -w 1 10); do
+            sudo useradd -g guixbuild -G guixbuild -d /var/empty \
+              -s "$(command -v nologin)" -c "Guix build user $i" \
+              --system "guixbuilder${i}" || true
+          done
+
+          GUIX=/var/guix/profiles/per-user/root/current-guix/bin/guix
+          GUIX_DAEMON=/var/guix/profiles/per-user/root/current-guix/bin/guix-daemon
+
+          for key in /var/guix/profiles/per-user/root/current-guix/share/guix/*.pub; do
+            sudo "$GUIX" archive --authorize < "$key"
+          done
+          sudo "$GUIX" archive --generate-key || true
+
+          sudo "$GUIX_DAEMON" \
+            --build-users-group=guixbuild \
+            --disable-chroot \
+            --discover=no \
+            > "$RUNNER_TEMP/guix-daemon.log" 2>&1 &
+
+          echo "/var/guix/profiles/per-user/root/current-guix/bin" >> "$GITHUB_PATH"
+          sleep 2
+
+      - name: Fetch nonguix channel
+        run: |
+          set -euxo pipefail
+          git clone https://gitlab.com/nonguix/nonguix "$RUNNER_TEMP/nonguix"
+          git -C "$RUNNER_TEMP/nonguix" checkout 0107c1c4849460b567424ba2cdc8942294c7a611
 
       - name: Show Guix version
         run: guix --version
 
       - name: Check Guix channel packages
-        run: bash ./scripts/check-channel-packages --all
+        run: GUIX_EXTRA_LOAD_PATHS="$RUNNER_TEMP/nonguix" bash ./scripts/check-channel-packages --all
