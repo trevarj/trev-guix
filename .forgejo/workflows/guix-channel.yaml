@@ -12,4 +12,4 @@ jobs:
         uses: https://data.forgejo.org/actions/checkout@v4
 
       - name: Check Guix channel packages
-        run: ./scripts/check-channel-packages --all
+        run: bash ./scripts/check-channel-packages --all
