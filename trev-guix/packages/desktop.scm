@@ -25,7 +25,7 @@
              (commit "b6117b787ed77dfabf5bf914d68c99381b6faa68")))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "035sjm2lkplzli80j3xa3i2s8azlpsks5nnwnc8yj863dimcxcaq"))))
+        (base32 "1agjq5jq5lx0hgvrv4p4vq2rcwdkszxdlssxbkq7cq724h546jga"))))
     (build-system cargo-build-system)
     (arguments
      (list
