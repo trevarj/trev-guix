@@ -1,0 +1,14 @@
+#!/usr/bin/env zsh
+
+emulate -L zsh
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+if [[ "${SKIP_GUIX_HOOKS:-}" = 1 ]]; then
+  print "SKIP_GUIX_HOOKS=1 set; skipping Guix channel checks"
+  exit 0
+fi
+
+exec scripts/check-channel-packages --fast
