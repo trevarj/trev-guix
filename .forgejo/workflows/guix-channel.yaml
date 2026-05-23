@@ -50,6 +50,8 @@ jobs:
           set -euxo pipefail
           git clone https://gitlab.com/nonguix/nonguix "$RUNNER_TEMP/nonguix"
           git -C "$RUNNER_TEMP/nonguix" checkout 0107c1c4849460b567424ba2cdc8942294c7a611
+          sed -i 's/,@arguments/,@(package-arguments package64)/' \
+            "$RUNNER_TEMP/nonguix/nonguix/utils.scm"
 
       - name: Show Guix version
         run: guix --version
