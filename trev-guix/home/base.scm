@@ -68,7 +68,6 @@
      (list glib "bin")
      gnupg
      gnu-standards
-     gost
      guile-next
      guixboy
      headsetcontrol
@@ -128,5 +127,4 @@
                    "org.gimp.GIMP"
                    "org.telegram.desktop"))))
      (service byedpi-service-type)
-     (service gost-service-type)
      %home-fontconfig-service-extension)))

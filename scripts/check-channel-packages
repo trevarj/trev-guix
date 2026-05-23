@@ -1,0 +1,135 @@
+#!/usr/bin/env zsh
+
+emulate -L zsh
+set -euo pipefail
+
+mode="${1:---fast}"
+
+autoload -Uz colors
+if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
+  colors
+else
+  for color in red green yellow blue magenta cyan bold reset_color; do
+    typeset "$color="
+  done
+fi
+
+say() {
+  print -P "%F{cyan}==>%f %B$1%b"
+}
+
+ok() {
+  print -P "%F{green}ok%b%f  $1"
+}
+
+warn() {
+  print -P "%F{yellow}warn%b%f  $1"
+}
+
+die() {
+  print -P "%F{red}fail%b%f $1" >&2
+  exit 1
+}
+
+need() {
+  command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"
+}
+
+run() {
+  local title="$1"
+  shift
+
+  say "$title"
+  print -P "%F{blue}+%f $*"
+  "$@"
+  ok "$title"
+}
+
+run_lint() {
+  local tmp clean exit_status
+
+  tmp="$(mktemp -t trev-guix-lint.XXXXXX)"
+  say "Lint package metadata, derivations, and formatting"
+  print -P "%F{blue}+%f guix lint -L . --no-network ${expr_args[*]}"
+
+  set +e
+  guix lint -L . --no-network "${expr_args[@]}" >"$tmp" 2>&1
+  exit_status="$?"
+  set -e
+
+  if [[ -s "$tmp" ]]; then
+    sed 's/^/  /' "$tmp"
+  fi
+
+  clean="$(sed '/^;;; /d;/^[[:space:]]*$/d' "$tmp")"
+  rm -f "$tmp"
+
+  if [[ "$exit_status" -ne 0 ]]; then
+    warn "guix lint exited with status $exit_status; continuing"
+    return 0
+  fi
+
+  if [[ -n "$clean" ]]; then
+    warn "guix lint reported issues; continuing"
+    return 0
+  fi
+
+  ok "Lint package metadata, derivations, and formatting"
+}
+
+need git
+need guix
+need mktemp
+need sed
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+typeset -a package_files expr_args labels
+package_files=("${(@f)$(git ls-files 'trev-guix/packages/*.scm')}")
+
+(( ${#package_files[@]} > 0 )) || die "no package modules found under trev-guix/packages"
+
+for file in "${package_files[@]}"; do
+  module="$(sed -n 's/^(define-module (\(.*\)).*/\1/p' "$file" | sed -n '1p')"
+  [[ -n "$module" ]] || die "could not read module name from $file"
+
+  typeset -a symbols
+  symbols=("${(@f)$(sed -n 's/^(define-public \([^[:space:]]*\).*/\1/p' "$file")}")
+
+  for symbol in "${symbols[@]}"; do
+    expr_args+=(-e "(@ ($module) $symbol)")
+    labels+=("$module:$symbol")
+  done
+done
+
+(( ${#labels[@]} > 0 )) || die "no public packages found under trev-guix/packages"
+
+say "Found ${#labels[@]} local package definitions"
+for label in "${labels[@]}"; do
+  print -P "  %F{magenta}-%f $label"
+done
+
+case "$mode" in
+  --fast)
+    run_lint
+    run "Evaluate package build graph without building" \
+      guix build -L . -n --no-substitutes -k "${expr_args[@]}"
+    ;;
+  --source)
+    run "Fetch package sources and verify declared hashes" \
+      guix build -L . --source -k "${expr_args[@]}"
+    ;;
+  --all)
+    run_lint
+    run "Evaluate package build graph without building" \
+      guix build -L . -n --no-substitutes -k "${expr_args[@]}"
+    run "Fetch package sources and verify declared hashes" \
+      guix build -L . --source -k "${expr_args[@]}"
+    ;;
+  *)
+    die "usage: scripts/check-channel-packages [--fast|--source|--all]"
+    ;;
+esac
+
+ok "Channel package checks completed"
