@@ -39,6 +39,11 @@
   (local-file "/home/trev/Workspace/dotfiles/guix/.config/guix/channels.scm"
               "channels.scm"))
 
+(define %substitute-urls-file
+  (plain-file "substitute-urls"
+              (string-append (string-join (stinkpad-substitute-urls) " ")
+                             "\n")))
+
 (define %host-torrc
   (local-file "/home/trev/.config/tor/torrc" "torrc"))
 
@@ -119,7 +124,8 @@
       (list
        (simple-service 'trev-guix-installer-sources etc-service-type
                        `(("trev-dotfiles" ,%dotfiles-checkout)
-                         ("guix/channels.scm" ,%channels-file)))
+                         ("guix/channels.scm" ,%channels-file)
+                         ("guix/substitute-urls" ,%substitute-urls-file)))
        (extra-special-file "/home/trev/.config/tor/torrc"
                            %host-torrc))))
     (packages
