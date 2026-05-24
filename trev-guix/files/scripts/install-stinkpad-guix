@@ -3,6 +3,7 @@ set -euo pipefail
 
 source_dotfiles_dir="/etc/trev-dotfiles"
 source_channels_file="/etc/guix/channels.scm"
+substitute_urls_file="/etc/guix/substitute-urls"
 target_dotfiles_dir="/mnt/home/trev/Workspace/dotfiles"
 target_workspace_dir="/mnt/home/trev/Workspace"
 system_expr="(@ (trev-guix systems stinkpad-niri) %stinkpad-niri)"
@@ -76,6 +77,7 @@ require_root
 
 [ -d "$source_dotfiles_dir" ] || die "$source_dotfiles_dir is missing"
 [ -f "$source_channels_file" ] || die "$source_channels_file is missing"
+[ -f "$substitute_urls_file" ] || die "$substitute_urls_file is missing"
 
 if mountpoint -q /mnt; then
   die "/mnt is already mounted; unmount it before running the installer"
@@ -87,10 +89,14 @@ for command in awk cat chown connmanctl cp cryptsetup guix id lsblk mkdir \
   require_command "$command"
 done
 
+substitute_urls="$(awk '{$1=$1; print}' "$substitute_urls_file")"
+[ -n "$substitute_urls" ] || die "$substitute_urls_file is empty"
+guix_substitute_args=(--substitute-urls="$substitute_urls")
+
 require_network
 
 printf 'Pulling Guix channels from %s.\n' "$source_channels_file" >&2
-guix pull -C "$source_channels_file"
+guix pull "${guix_substitute_args[@]}" -C "$source_channels_file"
 
 GUIX_PROFILE="/root/.config/guix/current"
 . "$GUIX_PROFILE/etc/profile"
@@ -107,7 +113,7 @@ efi_volume_id="${efi_uuid//-/}"
 [ "${#efi_volume_id}" -eq 8 ] || die "EFI UUID must be an 8 digit FAT volume ID"
 
 printf 'Validating Guix system configuration from channels.\n' >&2
-guix system build -n -e "$system_expr"
+guix system build "${guix_substitute_args[@]}" -n -e "$system_expr"
 
 printf '\nCandidate target disks:\n' >&2
 mapfile -t disks < <(
@@ -192,7 +198,7 @@ mkdir -p "$(dirname "$target_channels_file")"
 cp --no-preserve=ownership "$source_channels_file" "$target_channels_file"
 
 printf 'Installing Guix System target.\n' >&2
-guix system init -e "$system_expr" /mnt
+guix system init "${guix_substitute_args[@]}" -e "$system_expr" /mnt
 
 printf 'Making copied user files editable by trev.\n' >&2
 chown -R 1000:100 "$target_dotfiles_dir"
