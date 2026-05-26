@@ -1,7 +1,11 @@
 (define-module (trev-guix packages desktop)
   #:use-module (gnu packages)
+  #:use-module (gnu packages freedesktop)
   #:use-module (gnu packages pkg-config)
+  #:use-module (gnu packages rust)
+  #:use-module (gnu packages vulkan)
   #:use-module (gnu packages wm)
+  #:use-module (gnu packages xdisorg)
   #:use-module (guix build-system cargo)
   #:use-module (guix download)
   #:use-module (guix git-download)
@@ -9,9 +13,46 @@
   #:use-module (guix packages)
   #:use-module ((guix licenses) #:prefix license:))
 
+(define %spacesniffer1000-cargo-lock
+  (or (search-path %load-path "trev-guix/files/spacesniffer1000-Cargo.lock")
+      (error "could not find spacesniffer1000-Cargo.lock in load path")))
+
 (define %gnome-topbar-cargo-lock
-  (string-append (dirname (current-filename))
-                 "/../files/gnome-topbar-Cargo.lock"))
+  (or (search-path %load-path "trev-guix/files/gnome-topbar-Cargo.lock")
+      (error "could not find gnome-topbar-Cargo.lock in load path")))
+
+(define-public spacesniffer1000
+  (package
+    (name "spacesniffer1000")
+    (version "0.1.0-9fc2136")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/trevarj/spacesniffer1000.git")
+             (commit "9fc21368f6693936998855cfbd2708ab6fd31ae9")))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "1pzlqm9wc4papm1iqv2zqrawz2yfsqb62cgm9xkrcxs73afmapbs"))))
+    (build-system cargo-build-system)
+    (arguments
+     (list
+      #:install-source? #f))
+    (native-inputs
+     (list pkg-config rust))
+    (inputs
+     (append (cargo-inputs-from-lockfile
+              %spacesniffer1000-cargo-lock)
+             (list libxkbcommon
+                   wayland
+                   wayland-protocols
+                   vulkan-loader)))
+    (home-page "https://github.com/trevarj/spacesniffer1000")
+    (synopsis "Native graphical disk space visualizer")
+    (description
+     "SpaceSniffer1000 is an egui desktop application for exploring filesystem
+usage with a clickable treemap.")
+    (license license:expat)))
 
 (define-public gnome-topbar
   (package
