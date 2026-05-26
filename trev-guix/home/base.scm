@@ -9,6 +9,7 @@
   #:use-module (guix gexp)
   #:use-module (nongnu packages firmware)
   #:use-module (trev-guix packages ai)
+  #:use-module (trev-guix packages desktop)
   #:use-module (trev-guix packages emacs)
   #:use-module (trev-guix packages fonts)
   #:use-module (trev-guix packages guix)
@@ -86,6 +87,7 @@
      pinentry-tty
      ripgrep
      stow
+     spacesniffer1000
      tlp
      torsocks
      unzip
