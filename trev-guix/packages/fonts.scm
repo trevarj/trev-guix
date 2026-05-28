@@ -19,17 +19,6 @@
     (synopsis "Jetbrains Mono Iosevka variant")
     (license license:expat)))
 
-(define-public font-iotrevka
-  (package
-    (name "font-iotrevka")
-    (version "1.0.0")
-    (source (local-file "../files/fonts-Iotrevka" #:recursive? #t))
-    (build-system font-build-system)
-    (description "My custom Iosevka font where I pick what I like.")
-    (home-page "https://www.nerdfonts.com/")
-    (synopsis "Trev's Iosevka variant")
-    (license license:expat)))
-
 (define-public font-cryptofont
   (package
     (name "font-cryptofonts")

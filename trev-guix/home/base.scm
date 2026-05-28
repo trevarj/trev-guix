@@ -56,7 +56,6 @@
      font-google-noto-emoji
      font-google-noto-sans-cjk
      font-iosevka-jbm
-     font-iotrevka
      font-nerd-symbols
      font-terminus
      forgejo-cli
