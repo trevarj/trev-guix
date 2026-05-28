@@ -135,13 +135,13 @@
       (modify-services %desktop-services
         (guix-service-type
          config =>
-         (guix-p2p-enable-guix-daemon-extension
-          (guix-configuration
-           (inherit config)
-           (substitute-urls (stinkpad-substitute-urls))
-           (authorized-keys
-            (cons* nonguix-pubkey-file
-                   %default-authorized-guix-keys)))))
+         ;; guix-p2p: wrap with guix-p2p-enable-guix-daemon-extension
+         (guix-configuration
+          (inherit config)
+          (substitute-urls (stinkpad-substitute-urls))
+          (authorized-keys
+           (cons* nonguix-pubkey-file
+                  %default-authorized-guix-keys))))
         ;; Use Wayland
         (gdm-service-type
          config =>
