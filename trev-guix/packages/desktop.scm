@@ -57,16 +57,16 @@ usage with a clickable treemap.")
 (define-public gnome-topbar
   (package
     (name "gnome-topbar")
-    (version "0.14.1-b6117b7")
+    (version "1.0.0-dd7a4b8")
     (source
      (origin
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/trevarj/gnome-topbar.git")
-             (commit "b6117b787ed77dfabf5bf914d68c99381b6faa68")))
+             (commit "dd7a4b8cb2dc0dbbe8db5c114e6f239f6da9ad95")))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1agjq5jq5lx0hgvrv4p4vq2rcwdkszxdlssxbkq7cq724h546jga"))))
+        (base32 "1jyixwqaf8qw854p5b9psb3xx8gjy4n79rlfwqhc75pfjaxffpwx"))))
     (build-system cargo-build-system)
     (arguments
      (list
@@ -98,18 +98,3 @@ usage with a clickable treemap.")
 provides a continuous system panel with notifications, quick settings, media
 controls, workspaces, and custom script modules.")
     (license license:expat)))
-
-(define-public trevarj/swaynotificationcenter
-  (package
-    (inherit swaynotificationcenter)
-    (name "swaynotificationcenter")
-    (version "0.12.6")
-    (source (origin
-              (method git-fetch)
-              (uri (git-reference
-                     (url "https://github.com/trevarj/SwayNotificationCenter")
-                     (commit "524fbcf621d02dbbe63be5833da56e2eb930ea6c")))
-              (file-name (git-file-name "SwayNotificationCenter" "0.12.6"))
-              (sha256
-               (base32
-                "1m49sdc1jg26maj686p7ixzpi7y5s91mw6ljyl84f5wrd8ixi9b7"))))))

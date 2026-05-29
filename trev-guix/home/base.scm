@@ -81,12 +81,10 @@
      neofetch
      netcat
      ollama
-     opencode
      papirus-icon-theme
      pinentry-tty
      ripgrep
      stow
-     spacesniffer1000
      tlp
      torsocks
      unzip
