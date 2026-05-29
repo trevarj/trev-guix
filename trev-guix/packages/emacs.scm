@@ -33,17 +33,4 @@
                       (commit commit)))
                 (file-name (git-file-name "emacs-next-next-pgtk" commit))
                 (sha256
-                 (base32 "1b0523bha67apz1w4w6srdc117062ip9y8xd5prgy3iciv1c1lpw"))
-                (patches
-                 (append
-                  (search-patches "emacs-next-disable-jit-compilation.patch"
-                                  "emacs-next-exec-path.patch"
-                                  "emacs-fix-scheme-indent-function.patch"
-                                  "emacs-native-comp-driver-options.patch"
-                                  "emacs-next-native-comp-fix-filenames.patch"
-                                  "emacs-native-comp-pin-packages.patch")
-                  (list
-                   (local-file
-                    "../files/patches/emacs-line-number-realized-face.patch")
-                   (local-file
-                    "../files/patches/emacs-pgtk-performance-tuning.patch")))))))))
+                 (base32 "1b0523bha67apz1w4w6srdc117062ip9y8xd5prgy3iciv1c1lpw")))))))
