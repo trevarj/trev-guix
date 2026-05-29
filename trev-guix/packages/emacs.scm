@@ -7,7 +7,7 @@
   #:use-module (gnu packages emacs))
 
 (define-public emacs-next-next-pgtk
-  (let* ((commit "a8b9fad89720847a869bf288eb41473b6c82b833")
+  (let* ((commit "0a5e69eaef780e66a88bb6eca4e369b5e337245b")
          (version (git-version "31.0.50" "1" commit)))
     (package
       (inherit emacs-next-pgtk)
@@ -15,16 +15,7 @@
       (version version)
       (arguments
        (substitute-keyword-arguments (package-arguments emacs-next-pgtk)
-         ((#:tests? tests? #f) #f)
-         ((#:phases phases #~%standard-phases)
-          #~(modify-phases #$phases
-              (add-after 'unpack 'fix-module-env-snippet-32
-                (lambda _
-                  ;; Upstream typo leaves @module_env_snippet_32@
-                  ;; unsubstituted in generated src/emacs-module.h.
-                  (substitute* "configure.ac"
-                    (("module_env_snippet_31=\"\\$srcdir/src/module-env-32.h\"")
-                     "module_env_snippet_32=\"$srcdir/src/module-env-32.h\""))))))))
+         ((#:tests? tests? #f) #f)))
       (source (origin
                 (inherit (package-source emacs-next-minimal))
                 (method git-fetch)
@@ -33,4 +24,4 @@
                       (commit commit)))
                 (file-name (git-file-name "emacs-next-next-pgtk" commit))
                 (sha256
-                 (base32 "1b0523bha67apz1w4w6srdc117062ip9y8xd5prgy3iciv1c1lpw")))))))
+                 (base32 "1fb6yb0kid5vcx73phwp1ifxiifv9l3jbjr1ip7hxald2wmml5la")))))))
