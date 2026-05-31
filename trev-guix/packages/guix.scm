@@ -10,16 +10,16 @@
 (define-public guixboy
   (package
     (name "guixboy")
-    (version "0.1.0-4e83cb8")
+    (version "0.1.0-573d550")
     (source
      (origin
        (method git-fetch)
        (uri (git-reference
              (url "https://codeberg.org/trevarj/guixboy.git")
-             (commit "4e83cb82f977b4655997990c1bc07ab607bfba6d")))
+             (commit "573d550717a7529c2f3b6652356bde2b92db0ce0")))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0vnp334jd4z01gf734f3mnskxijb36xr89jy421zz4wknp4p5pi6"))))
+        (base32 "0a76fyh4vp1xjbz3gfawhr4c3za1n5zkm4zp6pkafshb55x0zzpp"))))
     (build-system copy-build-system)
     (arguments
      (list
