@@ -57,110 +57,116 @@
                      xdisorg)
 
 (eval-when (expand load eval)
-           (define-public %dotfiles-directory
-             "/home/trev/Workspace/dotfiles")
+  (define-public %dotfiles-directory
+    "/home/trev/Workspace/dotfiles")
 
-           (define-public %home-base-packages
-             (list adwaita-icon-theme
-                   aspell
-                   aspell-dict-en
-                   aspell-dict-ru
-                   btop
-                   byedpi
-                   codex
-                   curl
-                   direnv
-                   distrobox
-                   ddcutil
-                   ;; easyeffects
-                   emacs-next-next-pgtk
-                   (list emacs-next-next-pgtk "doc")
-                   emacs-guix
-                   emacs-notmuch
-                   emacs-vterm
-                   eza
-                   fd
-                   flatpak
-                   font-cryptofont
-                   font-google-noto
-                   font-google-noto-emoji
-                   font-google-noto-sans-cjk
-                   font-iosevka-jbm
-                   font-nerd-symbols
-                   font-terminus
-                   forgejo-cli
-                   fzf
-                   fzf-tab
-                   ;; fwupd-nonfree ; bringing in a lot of weird packages
-                   gh
-                   git
-                   (list git "send-email")
-                   (list glib "bin")
-                   gnupg
-                   gnu-standards
-                   guile-next
-                   guixboy
-                   headsetcontrol
-                   hicolor-icon-theme
-                   imv
-                   isync
-                   jq
-                   kitty
-                   mpv
-                   msmtp
-                   nautilus
-                   neofetch
-                   netcat
-                   notmuch
-                   ollama
-                   papirus-icon-theme
-                   pinentry-tty
-                   ripgrep
-                   stow
-                   tlp
-                   torsocks
-                   unzip
-                   wireguard-tools
-                   xdg-utils
-                   yt-dlp
-                   zsh
-                   zsh-autopair
-                   zsh-autosuggestions
-                   zsh-completions
-                   zsh-syntax-highlighting))
+  (define-public %home-base-packages
+    (list adwaita-icon-theme
+          aspell
+          aspell-dict-en
+          aspell-dict-ru
+          btop
+          byedpi
+          codex
+          curl
+          direnv
+          distrobox
+          ddcutil
+          ;; easyeffects
+          emacs-next-next-pgtk
+          (list emacs-next-next-pgtk "doc")
+          emacs-guix
+          emacs-notmuch
+          emacs-vterm
+          eza
+          fd
+          flatpak
+          font-cryptofont
+          font-google-noto
+          font-google-noto-emoji
+          font-google-noto-sans-cjk
+          font-iosevka-jbm
+          font-nerd-symbols
+          font-terminus
+          forgejo-cli
+          fzf
+          fzf-tab
+          ;; fwupd-nonfree ; bringing in a lot of weird packages
+          gh
+          git
+          (list git "send-email")
+          (list glib "bin")
+          gnupg
+          gnu-standards
+          guile-next
+          guixboy
+          headsetcontrol
+          hicolor-icon-theme
+          imv
+          isync
+          jq
+          kitty
+          mpv
+          msmtp
+          nautilus
+          neofetch
+          netcat
+          notmuch
+          ollama
+          papirus-icon-theme
+          pinentry-tty
+          pinentry-fuzzel
+          ripgrep
+          stow
+          tlp
+          torsocks
+          unzip
+          wireguard-tools
+          xdg-utils
+          yt-dlp
+          zsh
+          zsh-autopair
+          zsh-autosuggestions
+          zsh-completions
+          zsh-syntax-highlighting))
 
-           (define-public %home-base-services
-             (list (service home-dbus-service-type)
-                   (service home-pipewire-service-type)
-                   (service home-zsh-service-type
-                            (home-zsh-configuration (xdg-flavor? #f)
-                                                    (zshenv (list (local-file (string-append
-                                                                               %dotfiles-directory
-                                                                               "/zsh/.zshenv")
-                                                                   "zshenv")))
-                                                    (zshrc (list (local-file (string-append
-                                                                              %dotfiles-directory
-                                                                              "/zsh/.zshrc")
-                                                                  "zshrc")))
-                                                    (zprofile (list (local-file
-                                                                     (string-append
-                                                                      %dotfiles-directory
-                                                                      "/zsh/.zprofile")
-                                                                     "zprofile")))
-                                                    (environment-variables '(("ASPELL_DICT_DIR" . "${HOME}/.guix-home/profile/lib/aspell")))))
-                   (service home-flatpak-service-type
-                            (home-flatpak-configuration (applications '("com.bambulab.BambuStudio"
-                                                                        "com.brave.Browser"
-                                                                        "com.github.tchx84.Flatseal"
-                                                                        "com.transmissionbt.Transmission"
-                                                                        "org.freecad.FreeCAD"
-                                                                        "org.gimp.GIMP"
-                                                                        "org.telegram.desktop"))))
-                   (service byedpi-service-type)
-                   (simple-service 'mail-sync-timer home-shepherd-service-type
-                                   (list (shepherd-timer '(mail-sync)
-                                          "*/15 * * * *"
-                                          #~("/home/trev/.local/bin/mail-sync")
-                                          #:documentation
-                                          "Synchronize Maildir accounts and refresh notmuch tags.")))
-                   %home-fontconfig-service-extension)))
+  (define-public %home-base-services
+    (list (service home-dbus-service-type)
+          (service home-pipewire-service-type)
+          (service home-zsh-service-type
+                   (home-zsh-configuration (xdg-flavor? #f)
+                                           (zshenv (list (local-file
+                                                          (string-append
+                                                           %dotfiles-directory
+                                                           "/zsh/.zshenv")
+                                                          "zshenv")))
+                                           (zshrc (list (local-file
+                                                         (string-append
+                                                          %dotfiles-directory
+                                                          "/zsh/.zshrc")
+                                                         "zshrc")))
+                                           (zprofile (list (local-file
+                                                            (string-append
+                                                             %dotfiles-directory
+                                                             "/zsh/.zprofile")
+                                                            "zprofile")))
+                                           (environment-variables
+                                            '(("ASPELL_DICT_DIR"
+                                               . "${HOME}/.guix-home/profile/lib/aspell")))))
+          (service home-flatpak-service-type
+                   (home-flatpak-configuration (applications
+                                                '("com.bambulab.BambuStudio"
+                                                  "com.brave.Browser"
+                                                  "com.github.tchx84.Flatseal"
+                                                  "com.transmissionbt.Transmission"
+                                                  "org.freecad.FreeCAD"
+                                                  "org.gimp.GIMP"
+                                                  "org.telegram.desktop"))))
+          (service byedpi-service-type)
+          (simple-service 'mail-sync-timer home-shepherd-service-type
+                          (list (shepherd-timer '(mail-sync)
+                                                "*/15 * * * *"
+                                                #~("/home/trev/.local/bin/mail-sync")
+                                                #:documentation
+                                                "Synchronize Maildir accounts and refresh notmuch tags.")))
+          %home-fontconfig-service-extension)))
