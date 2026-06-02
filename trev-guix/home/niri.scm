@@ -20,7 +20,7 @@
                (layout 'stow)
                (packages
                 '("zsh" "guix" "guixboy" "niri" "gnome-topbar"
-                  "icons" "fuzzel" "hypr" "X"))
+                  "icons" "fuzzel" "hypr" "wallpapers" "mail" "X"))
                (excluded '("\\.zshenv" "\\.zshrc" "\\.zprofile"))))
      (service udiskie-service-type)
      %home-base-services))))
