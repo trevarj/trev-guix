@@ -169,11 +169,11 @@
           (backends (list sane-backends sane-airscan)))))
       (list
        ;; (service fwupd-service-type) ; pulling in a bunch of unrelated stuff
-       (service guix-p2p-service-type
-                (guix-p2p-configuration
-                 (dashboard? #t)
-                 (bootstrap-peers
-                  '("/dns4/guix-p2p.trevs.site/tcp/443/p2p/12D3KooWDnvPgCuPTPaMbnbLpXP7kCxmXc9F7agJPuAJWXGoDNPT"))))
+       ;; (service guix-p2p-service-type
+       ;;          (guix-p2p-configuration
+       ;;           (dashboard? #t)
+       ;;           (bootstrap-peers
+       ;;            '("/dns4/guix-p2p.trevs.site/tcp/443/p2p/12D3KooWDnvPgCuPTPaMbnbLpXP7kCxmXc9F7agJPuAJWXGoDNPT"))))
 
        ;; Enable SSH access
        (service openssh-service-type
