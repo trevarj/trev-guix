@@ -32,8 +32,7 @@
              (url "https://github.com/trevarj/spacesniffer1000.git")
              (commit "9fc21368f6693936998855cfbd2708ab6fd31ae9")))
        (file-name (git-file-name name version))
-       (sha256
-        (base32 "1pzlqm9wc4papm1iqv2zqrawz2yfsqb62cgm9xkrcxs73afmapbs"))))
+       (hash (content-hash "1pzlqm9wc4papm1iqv2zqrawz2yfsqb62cgm9xkrcxs73afmapbs"))))
     (build-system cargo-build-system)
     (arguments
      (list
@@ -57,16 +56,15 @@ usage with a clickable treemap.")
 (define-public gnome-topbar
   (package
     (name "gnome-topbar")
-    (version "1.0.0-a17395c")
+    (version "1.0.0-3b096cf")
     (source
      (origin
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/trevarj/gnome-topbar.git")
-             (commit "6f3419abd47ad832ed42daf6011bc61fc5186a34")))
+             (commit "3b096cfe79f935f22ec44d0dc0cb272944ec1f29")))
        (file-name (git-file-name name version))
-       (sha256
-        (base32 "038pdr3gh4d7b086ipp0xfy6xrcgqfynd01wkk0zgkajxlbynk6j"))))
+       (hash (content-hash "0m6bv5w705jxkz8wd96ijl22dgra3jkc2h4fwdl5z426gbq1mhnq"))))
     (build-system cargo-build-system)
     (arguments
      (list
