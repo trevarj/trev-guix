@@ -42,11 +42,13 @@
             (call-with-output-file script
               (lambda (port)
                 (format port "#!~a~%" #$(file-append bash "/bin/bash"))
+                (format port "export TZDIR=\"~a\"~%"
+                        #$(file-append tzdata "/share/zoneinfo"))
                 (format port "export PATH=\"~a${PATH:+:}$PATH\"~%" path)
                 (format port "exec -a \"${0##*/}\" \"~a\" \"$@\"~%" real-script)))
             (chmod script #o755)
             #t))))
-    (inputs (list bash coreutils gnupg))
+    (inputs (list bash coreutils gnupg tzdata))
     (home-page "https://example.invalid/trev-secrets")
     (synopsis "Local encrypted secrets unlock helper")
     (description
