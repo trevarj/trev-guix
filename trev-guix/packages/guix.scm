@@ -26,6 +26,7 @@
           (let* ((bin (string-append #$output "/bin"))
                  (share (string-append #$output "/share/trev-guix"))
                  (script (string-append bin "/trev-secrets"))
+                 (real-script (string-append bin "/.trev-secrets-real"))
                  (path (string-append
                         #$(file-append bash "/bin") ":"
                         #$(file-append coreutils "/bin") ":"
@@ -34,11 +35,17 @@
             (mkdir-p bin)
             (mkdir-p share)
             (copy-file #$(local-file "../files/scripts/trev-secrets")
-                       script)
+                       real-script)
             (copy-file #$(local-file "../files/secrets.env.gpg")
                        (string-append share "/secrets.env.gpg"))
+            (chmod real-script #o755)
+            (call-with-output-file script
+              (lambda (port)
+                (format port "#!~a~%" #$(file-append bash "/bin/bash"))
+                (format port "export PATH=\"~a${PATH:+:}$PATH\"~%" path)
+                (format port "exec -a \"${0##*/}\" \"~a\" \"$@\"~%" real-script)))
             (chmod script #o755)
-            (wrap-program script `("PATH" ":" prefix (,path)))))))
+            #t))))
     (inputs (list bash coreutils gnupg))
     (home-page "https://example.invalid/trev-secrets")
     (synopsis "Local encrypted secrets unlock helper")
