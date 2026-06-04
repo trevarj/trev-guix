@@ -6,10 +6,9 @@
   #:use-module (nongnu packages linux)
   #:use-module (nongnu system linux-initrd)
   #:use-module (trev-guix files udev-rules)
-  #:use-module (trev-guix packages guix)
   #:use-module (trev-guix services fwupd)
   #:use-module (trev-guix services networking)
-  #:use-module (trev-guix services secrets)
+  #:use-module (trev-guix systems local)
   #:use-module (trev-guix systems substitutes))
 
 (use-service-modules containers
@@ -56,7 +55,7 @@
 (define-public %stinkpad
   (operating-system
     (host-name "stinkpad")
-    (timezone "Etc/UTC")
+    (timezone %stinkpad-local-timezone)
     (locale "en_US.utf8")
 
     ;; Non-free Linux and firmware
@@ -135,7 +134,6 @@
                      lyrebird
                      nix
                      tor
-                     trev-secrets
                      zsh
                      %base-packages))
 
@@ -215,8 +213,6 @@
                                                          "trusted-users = root @wheel\n"))))
 
               (service nym-vpn-service-type)
-
-              (service trev-secrets-service-type)
 
               (udev-rules-service 'pipewire-add-udev-rules pipewire)
               (udev-rules-service 'upower-battery-threshold-udev-rules

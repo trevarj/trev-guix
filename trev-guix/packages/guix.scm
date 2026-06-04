@@ -1,60 +1,11 @@
 (define-module (trev-guix packages guix)
-  #:use-module (gnu packages bash)
-  #:use-module (gnu packages base)
-  #:use-module (gnu packages gnupg)
   #:use-module (gnu packages guile)
   #:use-module (guix build-system copy)
-  #:use-module (guix build-system trivial)
   #:use-module (guix gexp)
   #:use-module (guix git-download)
   #:use-module (guix packages)
   #:use-module (guix search-paths)
   #:use-module ((guix licenses) #:prefix license:))
-
-(define-public trev-secrets
-  (package
-    (name "trev-secrets")
-    (version "0.1.0")
-    (source #f)
-    (build-system trivial-build-system)
-    (arguments
-     (list
-      #:modules '((guix build utils))
-      #:builder
-      #~(begin
-          (use-modules (guix build utils))
-          (let* ((bin (string-append #$output "/bin"))
-                 (share (string-append #$output "/share/trev-guix"))
-                 (script (string-append bin "/trev-secrets"))
-                 (real-script (string-append bin "/.trev-secrets-real"))
-                 (path (string-append
-                        #$(file-append bash "/bin") ":"
-                        #$(file-append coreutils "/bin") ":"
-                        #$(file-append gnupg "/bin") ":"
-                        "/run/current-system/profile/bin")))
-            (mkdir-p bin)
-            (mkdir-p share)
-            (copy-file #$(local-file "../files/scripts/trev-secrets")
-                       real-script)
-            (copy-file #$(local-file "../files/secrets.env.gpg")
-                       (string-append share "/secrets.env.gpg"))
-            (chmod real-script #o755)
-            (call-with-output-file script
-              (lambda (port)
-                (format port "#!~a~%" #$(file-append bash "/bin/bash"))
-                (format port "export TZDIR=\"~a\"~%"
-                        #$(file-append tzdata "/share/zoneinfo"))
-                (format port "export PATH=\"~a${PATH:+:}$PATH\"~%" path)
-                (format port "exec -a \"${0##*/}\" \"~a\" \"$@\"~%" real-script)))
-            (chmod script #o755)
-            #t))))
-    (inputs (list bash coreutils gnupg tzdata))
-    (home-page "https://example.invalid/trev-secrets")
-    (synopsis "Local encrypted secrets unlock helper")
-    (description
-     "trev-secrets decrypts a committed GPG-encrypted environment file into
-root-only local system state and applies local machine settings.")
-    (license license:gpl3+)))
 
 (define-public guixboy
   (package
