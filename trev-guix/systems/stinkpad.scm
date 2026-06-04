@@ -8,6 +8,7 @@
   #:use-module (trev-guix files udev-rules)
   #:use-module (trev-guix services fwupd)
   #:use-module (trev-guix services networking)
+  #:use-module (trev-guix services secrets)
   #:use-module (trev-guix systems substitutes))
 
 (use-service-modules
@@ -127,6 +128,7 @@
                lyrebird
                nix
                tor
+               trev-secrets
                zsh
                %base-packages))
 
@@ -211,6 +213,8 @@
                                      "trusted-users = root @wheel\n"))))
 
        (service nym-vpn-service-type)
+
+       (service trev-secrets-service-type)
 
        (udev-rules-service 'pipewire-add-udev-rules pipewire)
        (udev-rules-service 'upower-battery-threshold-udev-rules
