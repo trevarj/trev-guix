@@ -6,6 +6,7 @@
   #:use-module (nongnu packages linux)
   #:use-module (nongnu system linux-initrd)
   #:use-module (trev-guix files udev-rules)
+  #:use-module (trev-guix packages guix)
   #:use-module (trev-guix services fwupd)
   #:use-module (trev-guix services networking)
   #:use-module (trev-guix services secrets)
