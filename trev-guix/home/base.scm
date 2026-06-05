@@ -69,6 +69,7 @@
           byedpi
           codex
           curl
+          difftastic
           direnv
           distrobox
           ddcutil
