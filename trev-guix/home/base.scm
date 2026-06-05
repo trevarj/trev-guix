@@ -136,33 +136,28 @@
           (service home-pipewire-service-type)
           (service home-zsh-service-type
                    (home-zsh-configuration (xdg-flavor? #f)
-                                           (zshenv (list (local-file
-                                                          (string-append
-                                                           %dotfiles-directory
-                                                           "/zsh/.zshenv")
-                                                          "zshenv")))
-                                           (zshrc (list (local-file
-                                                         (string-append
-                                                          %dotfiles-directory
-                                                          "/zsh/.zshrc")
-                                                         "zshrc")))
+                                           (zshenv (list (local-file (string-append
+                                                                      %dotfiles-directory
+                                                                      "/zsh/.zshenv")
+                                                                     "zshenv")))
+                                           (zshrc (list (local-file (string-append
+                                                                     %dotfiles-directory
+                                                                     "/zsh/.zshrc")
+                                                                    "zshrc")))
                                            (zprofile (list (local-file
                                                             (string-append
                                                              %dotfiles-directory
                                                              "/zsh/.zprofile")
                                                             "zprofile")))
-                                           (environment-variables
-                                            '(("ASPELL_DICT_DIR"
-                                               . "${HOME}/.guix-home/profile/lib/aspell")))))
+                                           (environment-variables '(("ASPELL_DICT_DIR" . "${HOME}/.guix-home/profile/lib/aspell")))))
           (service home-flatpak-service-type
-                   (home-flatpak-configuration (applications
-                                                '("com.bambulab.BambuStudio"
-                                                  "com.brave.Browser"
-                                                  "com.github.tchx84.Flatseal"
-                                                  "com.transmissionbt.Transmission"
-                                                  "org.freecad.FreeCAD"
-                                                  "org.gimp.GIMP"
-                                                  "org.telegram.desktop"))))
+                   (home-flatpak-configuration (applications '("com.bambulab.BambuStudio"
+                                                               "com.brave.Browser"
+                                                               "com.github.tchx84.Flatseal"
+                                                               "com.transmissionbt.Transmission"
+                                                               "org.freecad.FreeCAD"
+                                                               "org.gimp.GIMP"
+                                                               "org.telegram.desktop"))))
           (service byedpi-service-type)
           (simple-service 'mail-sync-timer home-shepherd-service-type
                           (list (shepherd-timer '(mail-sync)
