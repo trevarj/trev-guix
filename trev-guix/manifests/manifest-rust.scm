@@ -18,52 +18,49 @@
   #:use-module (gnu packages sqlite)
   #:use-module (gnu packages xorg))
 
-(packages->manifest
- (list
-  gcc-toolchain
-  gnu-make
-  clang-toolchain-21
-  binutils
-  pkg-config
+(packages->manifest (list gcc-toolchain
+                          gnu-make
+                          clang-toolchain-21
+                          binutils
+                          pkg-config
 
-  ;; Guix stable rust
-  rust
-  (list rust "cargo")
-  (list rust "tools")
-  (list rust "rust-src")
+                          ;; Guix stable rust
+                          rust
+                          (list rust "cargo")
+                          (list rust "tools")
+                          (list rust "rust-src")
 
-  ;; Rustup
-  ;; (rustup)
+                          ;; Rustup
+                          ;; (rustup)
+                          
+                          ;; (rustup "nightly"
+                          ;; #:components
+                          ;; '("rust-analyzer" "rustfmt" "rust-src" "rust-std" "clippy")
+                          ;; #:targets
+                          ;; '("wasm32-unknown-unknown"))
+                          
+                          ;; (rustup "nightly-2026-03-14"
+                          ;; #:components
+                          ;; '("rust-analyzer" "rustfmt" "rust-src" "rust-std" "clippy")
+                          ;; #:targets
+                          ;; '("wasm32-unknown-unknown"))
+                          
+                          ;; 1.63.0
+                          ;; (rustup "stable-2022-08-11"
+                          ;; #:components
+                          ;; '("rust-analyzer" "rustfmt" "rust-src" "clippy"))
+                          
+                          ;; Libraries for certain sys crates
+                          openssl
+                          eudev ;libudev replacement
+                          libsecp256k1
 
-  ;; (rustup "nightly"
-  ;;         #:components
-  ;;         '("rust-analyzer" "rustfmt" "rust-src" "rust-std" "clippy")
-  ;;         #:targets
-  ;;         '("wasm32-unknown-unknown"))
+                          ;; WASM stuff
+                          node
 
-  ;; (rustup "nightly-2026-03-14"
-  ;;         #:components
-  ;;         '("rust-analyzer" "rustfmt" "rust-src" "rust-std" "clippy")
-  ;;         #:targets
-  ;;         '("wasm32-unknown-unknown"))
-
-  ;; 1.63.0
-  ;; (rustup "stable-2022-08-11"
-  ;;         #:components
-  ;;         '("rust-analyzer" "rustfmt" "rust-src" "clippy"))
-
-  ;; Libraries for certain sys crates
-  openssl
-  eudev                                 ; libudev replacement
-  libsecp256k1
-
-  ;; WASM stuff
-  node
-
-  ;; Extras
-  perl
-  python
-  python-pip
-  python-virtualenv
-  sqlite
-  ))
+                          ;; Extras
+                          perl
+                          python
+                          python-pip
+                          python-virtualenv
+                          sqlite))

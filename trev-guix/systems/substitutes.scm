@@ -1,11 +1,9 @@
 (define-module (trev-guix systems substitutes)
   #:use-module (srfi srfi-1)
-  #:export (%stinkpad-substitute-urls
-            stinkpad-substitute-urls))
+  #:export (%stinkpad-substitute-urls stinkpad-substitute-urls))
 
 (define %stinkpad-substitute-urls
-  '(("https://ci.guix.gnu.org" . #f)
-    ("https://bordeaux.guix.gnu.org" . #f)
+  '(("https://ci.guix.gnu.org" . #f) ("https://bordeaux.guix.gnu.org" . #f)
     ("https://ci.guix.trop.in" . #t)
     ("https://cache-sg.guix.moe" . #t)
     ("https://cache-cdn.guix.moe" . #f)
@@ -20,5 +18,4 @@
 (define (stinkpad-substitute-urls)
   (filter-map (lambda (entry)
                 (and (cdr entry)
-                     (car entry)))
-              %stinkpad-substitute-urls))
+                     (car entry))) %stinkpad-substitute-urls))

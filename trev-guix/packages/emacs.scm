@@ -15,13 +15,15 @@
       (version version)
       (arguments
        (substitute-keyword-arguments (package-arguments emacs-next-pgtk)
-         ((#:tests? tests? #f) #f)))
-      (source (origin
-                (inherit (package-source emacs-next-minimal))
-                (method git-fetch)
-                (uri (git-reference
-                      (url "https://github.com/emacs-mirror/emacs.git")
-                      (commit commit)))
-                (file-name (git-file-name "emacs-next-next-pgtk" commit))
-                (sha256
-                 (base32 "1fb6yb0kid5vcx73phwp1ifxiifv9l3jbjr1ip7hxald2wmml5la")))))))
+         ((#:tests? tests? #f)
+          #f)))
+      (source
+       (origin
+         (inherit (package-source emacs-next-minimal))
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/emacs-mirror/emacs.git")
+               (commit commit)))
+         (file-name (git-file-name "emacs-next-next-pgtk" commit))
+         (sha256
+          (base32 "1fb6yb0kid5vcx73phwp1ifxiifv9l3jbjr1ip7hxald2wmml5la")))))))

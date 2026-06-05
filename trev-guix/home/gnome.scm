@@ -14,20 +14,20 @@
   (home-environment
     ;; Below is the list of packages that will show up in your
     ;; Home profile, under ~/.guix-home/profile.
-    (packages
-     (cons*
-      adw-gtk3-theme
-      gnome-tweaks
-      gnome-shell-extension-appindicator
-      gnome-shell-extension-executor
-      gnome-shell-extension-weather-oclock
-      %home-base-packages))
+    (packages (cons* adw-gtk3-theme
+                     gnome-tweaks
+                     gnome-shell-extension-appindicator
+                     gnome-shell-extension-executor
+                     gnome-shell-extension-weather-oclock
+                     %home-base-packages))
     (services
-     (cons*
-      (service home-dotfiles-service-type
-               (home-dotfiles-configuration
-                 (directories (list %dotfiles-directory))
-                 (layout 'stow)
-                 (packages '("zsh" "guix" "mail"))
-                 (excluded '("\\.zshenv" "\\.zshrc" "\\.zprofile"))))
-      %home-base-services))))
+     (cons* (service home-dotfiles-service-type
+                     (home-dotfiles-configuration (directories (list
+                                                                %dotfiles-directory))
+                                                  (layout 'stow)
+                                                  (packages '("zsh" "guix"
+                                                              "mail"))
+                                                  (excluded '("\\.zshenv"
+                                                              "\\.zshrc"
+                                                              "\\.zprofile"))))
+            %home-base-services))))
