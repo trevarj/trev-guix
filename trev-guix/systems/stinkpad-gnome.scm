@@ -8,11 +8,10 @@
   (operating-system
     (inherit %stinkpad)
     (services
-     (cons*
-      (service gnome-desktop-service-type)
-      ;; TODO: find out why this clobbered my stinkpad-niri on reconfigure
-      ;; (simple-service 'apply-gsettings etc-profile-d-service-type
-      ;;                 (list
-      ;;                  (local-file "../files/scripts/apply-gnome-settings.sh"
-      ;;                              "apply-gsettings.sh")))
-      (operating-system-user-services %stinkpad)))))
+     (cons* (service gnome-desktop-service-type)
+            ;; TODO: find out why this clobbered my stinkpad-niri on reconfigure
+            ;; (simple-service 'apply-gsettings etc-profile-d-service-type
+            ;; (list
+            ;; (local-file "../files/scripts/apply-gnome-settings.sh"
+            ;; "apply-gsettings.sh")))
+            (operating-system-user-services %stinkpad)))))

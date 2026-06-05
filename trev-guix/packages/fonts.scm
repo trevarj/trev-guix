@@ -6,13 +6,16 @@
   #:use-module (guix download)
   #:use-module (guix build-system font)
   #:use-module (guix build-system trivial)
-  #:use-module ((guix licenses) #:prefix license:))
+  #:use-module ((guix licenses)
+                #:prefix license:))
 
 (define-public font-iosevka-jbm
   (package
     (name "font-iosevka-jbm")
     (version "1.0.0")
-    (source (local-file "../files/fonts-IosevkaJbm" #:recursive? #t))
+    (source
+     (local-file "../files/fonts-IosevkaJbm"
+                 #:recursive? #t))
     (build-system font-build-system)
     (description "My custom Iosevka font inspired by JetBrains Mono.")
     (home-page "https://www.nerdfonts.com/")
@@ -23,7 +26,8 @@
   (package
     (name "font-cryptofonts")
     (version "1.0.0")
-    (source (local-file "../files/cryptofont.ttf"))
+    (source
+     (local-file "../files/cryptofont.ttf"))
     (build-system font-build-system)
     (description "A font for cryptocurrency symbols")
     (home-page "N/A")

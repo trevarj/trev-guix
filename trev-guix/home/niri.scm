@@ -11,16 +11,23 @@
 
 (define-public %home-niri-environment
   (home-environment
-   (packages %home-base-packages)
-   (services
-    (cons*
-     (service home-dotfiles-service-type
-              (home-dotfiles-configuration
-               (directories (list %dotfiles-directory))
-               (layout 'stow)
-               (packages
-                '("zsh" "guix" "guixboy" "niri" "gnome-topbar"
-                  "icons" "fuzzel" "hypr" "wallpapers" "mail" "X"))
-               (excluded '("\\.zshenv" "\\.zshrc" "\\.zprofile"))))
-     (service udiskie-service-type)
-     %home-base-services))))
+    (packages %home-base-packages)
+    (services
+     (cons* (service home-dotfiles-service-type
+                     (home-dotfiles-configuration (directories (list
+                                                                %dotfiles-directory))
+                                                  (layout 'stow)
+                                                  (packages '("zsh" "guix"
+                                                              "guixboy"
+                                                              "niri"
+                                                              "gnome-topbar"
+                                                              "icons"
+                                                              "fuzzel"
+                                                              "hypr"
+                                                              "wallpapers"
+                                                              "mail"
+                                                              "X"))
+                                                  (excluded '("\\.zshenv"
+                                                              "\\.zshrc"
+                                                              "\\.zprofile"))))
+            (service udiskie-service-type) %home-base-services))))

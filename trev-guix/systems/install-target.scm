@@ -1,5 +1,5 @@
-(define-module (trev-guix systems install-target))
+(define-module (trev-guix systems install-target)
+  )
 
-(module-ref
- (resolve-interface '(trev-guix systems stinkpad-niri))
- '%stinkpad-niri)
+(module-ref (resolve-interface '(trev-guix systems stinkpad-niri))
+            '%stinkpad-niri)

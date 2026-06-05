@@ -11,7 +11,8 @@
   #:use-module (guix download)
   #:use-module (guix gexp)
   #:use-module (guix packages)
-  #:use-module ((guix licenses) #:prefix license:)
+  #:use-module ((guix licenses)
+                #:prefix license:)
   #:use-module (nonguix build-system binary))
 
 (define-public ollama
@@ -22,8 +23,8 @@
      (origin
        (method url-fetch)
        (uri (string-append
-             "https://github.com/ollama/ollama/releases/download/v"
-             version "/ollama-linux-amd64.tar.zst"))
+             "https://github.com/ollama/ollama/releases/download/v" version
+             "/ollama-linux-amd64.tar.zst"))
        (sha256
         (base32 "1nywgijy2limpclhjxl29vhndg9dc5l8ipqr8wxhsvm0dgbgii8m"))))
     (build-system binary-build-system)
@@ -41,11 +42,9 @@
             (lambda* (#:key inputs #:allow-other-keys)
               (invoke "tar" "--use-compress-program=zstd" "-xf"
                       (assoc-ref inputs "source")))))))
-    (native-inputs
-     (list zstd))
-    (propagated-inputs
-     (list glibc
-           `(,gcc "lib")))
+    (native-inputs (list zstd))
+    (propagated-inputs (list glibc
+                             `(,gcc "lib")))
     (supported-systems '("x86_64-linux"))
     (home-page "https://ollama.com")
     (synopsis "Run large language models locally")
@@ -80,22 +79,21 @@ as well as a library of pre-built models that can be easily used.")
       #~(modify-phases %standard-phases
           (replace 'unpack
             (lambda* (#:key inputs #:allow-other-keys)
-              (invoke "tar" "xzf" (assoc-ref inputs "source"))
+              (invoke "tar" "xzf"
+                      (assoc-ref inputs "source"))
               (chmod "opencode" #o755)))
           (add-after 'install 'wrap-binary
             (lambda* (#:key inputs #:allow-other-keys)
               (let* ((fzf (assoc-ref inputs "fzf"))
                      (ripgrep (assoc-ref inputs "ripgrep"))
-                     (path (string-append
-                            fzf "/bin:"
-                            ripgrep "/bin")))
+                     (path (string-append fzf "/bin:" ripgrep "/bin")))
                 (wrap-program (string-append #$output "/bin/opencode")
-                  `("PATH" ":" prefix (,path))
-                  `("OPENCODE_DISABLE_UPDATE" ":" = ("1")))))))))
-    (inputs
-     (list bash-minimal fzf ripgrep))
-    (native-inputs
-     (list gzip))
+                  `("PATH" ":" prefix
+                    (,path))
+                  `("OPENCODE_DISABLE_UPDATE" ":" =
+                    ("1")))))))))
+    (inputs (list bash-minimal fzf ripgrep))
+    (native-inputs (list gzip))
     (supported-systems '("x86_64-linux"))
     (home-page "https://github.com/anomalyco/opencode")
     (synopsis "Open source AI coding agent for the terminal")
@@ -117,13 +115,15 @@ auto-updates for reproducibility and bundles fzf and ripgrep in PATH.")
        (uri (string-append
              "https://github.com/openai/codex/releases/download/rust-v"
              version "/codex-x86_64-unknown-linux-musl.tar.gz"))
-       (sha256 (base32 "0cb9d4rv96j752vcy21b2h3irf6v2vdzc147pff7wncm7cqqhvnr"))))
+       (sha256
+        (base32 "0cb9d4rv96j752vcy21b2h3irf6v2vdzc147pff7wncm7cqqhvnr"))))
     (build-system binary-build-system)
     (propagated-inputs (list bubblewrap))
     (arguments
      (list
       #:validate-runpath? #f
-      #:install-plan #~'(("codex-x86_64-unknown-linux-musl" "bin/codex"))))
+      #:install-plan
+      #~'(("codex-x86_64-unknown-linux-musl" "bin/codex"))))
     (home-page "https://github.com/openai/codex")
     (synopsis "AI coding agent from OpenAI")
     (description

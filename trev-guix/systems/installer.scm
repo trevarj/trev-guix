@@ -10,20 +10,18 @@
 
 (use-service-modules base guix)
 
-(use-package-modules
- bash
- version-control)
+(use-package-modules bash version-control)
 
 (define %nonguix-pubkey-file
-  (plain-file
-   "nonguix.pub"
+  (plain-file "nonguix.pub"
    "(public-key
      (ecc (curve Ed25519)
           (q #C1FD53E5D4CE971933EC50C9F307AE2171A2D3B52C804642A7A35F84F3A4EA98#)))"))
 
 (define (path-component? component file)
   (or (string-suffix? (string-append "/" component) file)
-      (string-contains file (string-append "/" component "/"))))
+      (string-contains file
+                       (string-append "/" component "/"))))
 
 (define (dotfiles-file? file stat)
   (not (or (path-component? ".git" file)
@@ -31,7 +29,8 @@
            (path-component? "stinkpad-target-system" file))))
 
 (define %dotfiles-checkout
-  (local-file "/home/trev/Workspace/dotfiles" "trev-dotfiles"
+  (local-file "/home/trev/Workspace/dotfiles"
+              "trev-dotfiles"
               #:recursive? #t
               #:select? dotfiles-file?))
 
@@ -41,43 +40,38 @@
 
 (define %substitute-urls-file
   (plain-file "substitute-urls"
-              (string-append (string-join (stinkpad-substitute-urls) " ")
-                             "\n")))
+              (string-append (string-join (stinkpad-substitute-urls) " ") "\n")))
 
 (define %host-torrc
   (local-file "/home/trev/.config/tor/torrc" "torrc"))
 
 (define %install-stinkpad-script
-  (local-file "../files/scripts/install-stinkpad-guix"
-              "install-stinkpad-guix"))
+  (local-file "../files/scripts/install-stinkpad-guix" "install-stinkpad-guix"))
 
 (define %finish-stinkpad-install-script
   (local-file "../files/scripts/finish-stinkpad-install"
               "finish-stinkpad-install"))
 
 (define %install-stinkpad-command
-  (program-file
-   "install-stinkpad"
-   #~(apply execl
-            #$(file-append bash "/bin/bash")
-            "bash"
-            #$%install-stinkpad-script
-            (cdr (command-line)))))
+  (program-file "install-stinkpad"
+                #~(apply execl
+                         #$(file-append bash "/bin/bash") "bash"
+                         #$%install-stinkpad-script
+                         (cdr (command-line)))))
 
 (define %finish-stinkpad-install-command
-  (program-file
-   "finish-stinkpad-install"
-   #~(apply execl
-            #$(file-append bash "/bin/bash")
-            "bash"
-            #$%finish-stinkpad-install-script
-            (cdr (command-line)))))
+  (program-file "finish-stinkpad-install"
+                #~(apply execl
+                         #$(file-append bash "/bin/bash") "bash"
+                         #$%finish-stinkpad-install-script
+                         (cdr (command-line)))))
 
 (define %install-stinkpad-package
   (package
     (name "install-stinkpad")
     (version "0")
-    (source #f)
+    (source
+     #f)
     (build-system trivial-build-system)
     (arguments
      (list
@@ -111,24 +105,20 @@
                      amdgpu-firmware
                      (operating-system-firmware installation-os-nonfree)))
     (services
-     (append
-      (modify-services (operating-system-user-services installation-os-nonfree)
-        (guix-service-type
-         config =>
-         (guix-configuration
-          (inherit config)
-          (substitute-urls (stinkpad-substitute-urls))
-          (authorized-keys
-           (cons* %nonguix-pubkey-file
-                  %default-authorized-guix-keys)))))
-      (list
-       (simple-service 'trev-guix-installer-sources etc-service-type
-                       `(("trev-dotfiles" ,%dotfiles-checkout)
-                         ("guix/channels.scm" ,%channels-file)
-                         ("guix/substitute-urls" ,%substitute-urls-file)))
-       (extra-special-file "/home/trev/.config/tor/torrc"
-                           %host-torrc))))
-    (packages
-     (cons* %install-stinkpad-package
-            git
-            (operating-system-packages installation-os-nonfree)))))
+     (append (modify-services (operating-system-user-services
+                               installation-os-nonfree)
+               (guix-service-type config =>
+                                  (guix-configuration (inherit config)
+                                                      (substitute-urls (stinkpad-substitute-urls))
+                                                      (authorized-keys (cons*
+                                                                        %nonguix-pubkey-file
+                                                                        %default-authorized-guix-keys)))))
+             (list (simple-service 'trev-guix-installer-sources
+                                   etc-service-type
+                                   `(("trev-dotfiles" ,%dotfiles-checkout)
+                                     ("guix/channels.scm" ,%channels-file)
+                                     ("guix/substitute-urls" ,%substitute-urls-file)))
+                   (extra-special-file "/home/trev/.config/tor/torrc"
+                                       %host-torrc))))
+    (packages (cons* %install-stinkpad-package git
+                     (operating-system-packages installation-os-nonfree)))))
