@@ -96,7 +96,7 @@ repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
 
 declare -a package_files expr_args labels guix_load_path_args extra_load_paths
-guix_load_path_args=(-L .)
+guix_load_path_args=(-L channel)
 
 if [[ -n "${GUIX_EXTRA_LOAD_PATHS:-}" ]]; then
   IFS=':' read -r -a extra_load_paths <<< "$GUIX_EXTRA_LOAD_PATHS"
@@ -105,9 +105,9 @@ if [[ -n "${GUIX_EXTRA_LOAD_PATHS:-}" ]]; then
   done
 fi
 
-mapfile -t package_files < <(git ls-files 'trev-guix/packages/*.scm')
+mapfile -t package_files < <(git ls-files --cached --others --exclude-standard 'channel/trev-guix/packages/*.scm')
 
-(( ${#package_files[@]} > 0 )) || die "no package modules found under trev-guix/packages"
+(( ${#package_files[@]} > 0 )) || die "no package modules found under channel/trev-guix/packages"
 
 for file in "${package_files[@]}"; do
   module="$(sed -n 's/^(define-module (\(.*\)).*/\1/p' "$file" | sed -n '1p')"
@@ -122,7 +122,7 @@ for file in "${package_files[@]}"; do
   done
 done
 
-(( ${#labels[@]} > 0 )) || die "no public packages found under trev-guix/packages"
+(( ${#labels[@]} > 0 )) || die "no public packages found under channel/trev-guix/packages"
 
 say "Found ${#labels[@]} local package definitions"
 for label in "${labels[@]}"; do

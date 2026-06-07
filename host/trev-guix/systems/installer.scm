@@ -28,11 +28,20 @@
            (string-suffix? "/stinkpad-installer.iso" file)
            (path-component? "stinkpad-target-system" file))))
 
+(define (trev-guix-file? file stat)
+  (not (or (path-component? ".git" file)
+           (string-suffix? "/stinkpad-installer.iso" file))))
+
 (define %dotfiles-checkout
   (local-file "/home/trev/Workspace/dotfiles"
               "trev-dotfiles"
               #:recursive? #t
               #:select? dotfiles-file?))
+
+(define %trev-guix-checkout
+  (local-file "../../.." "trev-guix"
+              #:recursive? #t
+              #:select? trev-guix-file?))
 
 (define %channels-file
   (local-file "/home/trev/Workspace/dotfiles/guix/.config/guix/channels.scm"
@@ -46,10 +55,11 @@
   (local-file "/home/trev/.config/tor/torrc" "torrc"))
 
 (define %install-stinkpad-script
-  (local-file "../files/scripts/install-stinkpad-guix" "install-stinkpad-guix"))
+  (local-file "../../../channel/trev-guix/files/scripts/install-stinkpad-guix"
+              "install-stinkpad-guix"))
 
 (define %finish-stinkpad-install-script
-  (local-file "../files/scripts/finish-stinkpad-install"
+  (local-file "../../../channel/trev-guix/files/scripts/finish-stinkpad-install"
               "finish-stinkpad-install"))
 
 (define %install-stinkpad-command
@@ -115,7 +125,8 @@
                                                                         %default-authorized-guix-keys)))))
              (list (simple-service 'trev-guix-installer-sources
                                    etc-service-type
-                                   `(("trev-dotfiles" ,%dotfiles-checkout)
+                                   `(("trev-guix" ,%trev-guix-checkout)
+                                     ("trev-dotfiles" ,%dotfiles-checkout)
                                      ("guix/channels.scm" ,%channels-file)
                                      ("guix/substitute-urls" ,%substitute-urls-file)))
                    (extra-special-file "/home/trev/.config/tor/torrc"

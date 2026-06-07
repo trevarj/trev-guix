@@ -16,6 +16,15 @@
 (define-public gost-service-type
   (simple-daemon-service-type 'gost "gost"))
 
+(define (trev-guix-file file)
+  (let loop ((dirs %load-path))
+    (if (null? dirs)
+        (error "missing trev-guix file" file)
+        (let ((candidate (string-append (car dirs) "/trev-guix/files/" file)))
+          (if (file-exists? candidate)
+              (canonicalize-path candidate)
+              (loop (cdr dirs)))))))
+
 (define-record-type* <nym-vpn-configuration> nym-vpn-configuration
                      make-nym-vpn-configuration
   nym-vpn-configuration?
@@ -24,8 +33,11 @@
 
 (define %nym-vpn-polkit-policy
   (file-union "nym-vpn-polkit-policy"
-              `(("share/polkit-1/actions/com.nymvpn.vpnd.unix-access.policy" ,
-                 (local-file "../files/com.nymvpn.vpnd.unix-access.policy")))))
+              (list
+               (list "share/polkit-1/actions/com.nymvpn.vpnd.unix-access.policy"
+                     (local-file
+                      (trev-guix-file
+                       "com.nymvpn.vpnd.unix-access.policy"))))))
 
 (define (nym-vpn-shepherd-service config)
   (match-record config <nym-vpn-configuration>
