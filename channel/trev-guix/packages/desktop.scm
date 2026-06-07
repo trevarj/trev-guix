@@ -1,18 +1,32 @@
 (define-module (trev-guix packages desktop)
   #:use-module (gnu packages)
+  #:use-module (gnu packages base)
   #:use-module (gnu packages freedesktop)
+  #:use-module (gnu packages gnupg)
+  #:use-module (gnu packages guile)
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages rust)
   #:use-module (gnu packages vulkan)
   #:use-module (gnu packages wm)
   #:use-module (gnu packages xdisorg)
   #:use-module (guix build-system cargo)
+  #:use-module (guix build-system trivial)
   #:use-module (guix download)
+  #:use-module (guix gexp)
   #:use-module (guix git-download)
   #:use-module (guix import crate)
   #:use-module (guix packages)
   #:use-module ((guix licenses)
                 #:prefix license:))
+
+(define (trev-guix-file file)
+  (let loop ((dirs %load-path))
+    (if (null? dirs)
+        (error "missing trev-guix file" file)
+        (let ((candidate (string-append (car dirs) "/trev-guix/files/" file)))
+          (if (file-exists? candidate)
+              (canonicalize-path candidate)
+              (loop (cdr dirs)))))))
 
 (define %spacesniffer1000-cargo-lock
   (or (search-path %load-path "trev-guix/files/spacesniffer1000-Cargo.lock")
@@ -89,3 +103,35 @@ usage with a clickable treemap.")
 provides a continuous system panel with notifications, quick settings, media
 controls, workspaces, and custom script modules.")
     (license license:expat)))
+
+(define-public pinentry-fuzzguy
+  (package
+    (name "pinentry-fuzzguy")
+    (version "0.1.0")
+    (source (local-file (trev-guix-file "pinentry-fuzzguy")))
+    (build-system trivial-build-system)
+    (arguments
+     (list
+      #:modules '((guix build utils))
+      #:builder
+      #~(begin
+          (use-modules (guix build utils))
+          (let* ((bin (string-append #$output "/bin"))
+                 (target (string-append bin "/pinentry-fuzzguy")))
+            (mkdir-p bin)
+            (copy-file #$source target)
+            (substitute* target
+              (("@GUILE@") #$(file-append guile-3.0 "/bin/guile"))
+              (("@FUZZEL@") #$(file-append fuzzel "/bin/fuzzel"))
+              (("@PINENTRY_TTY@")
+               #$(file-append pinentry-tty "/bin/pinentry-tty"))
+              (("@TIMEOUT@") #$(file-append coreutils "/bin/timeout")))
+            (chmod target #o555)))))
+    (inputs (list coreutils fuzzel guile-3.0 pinentry-tty))
+    (home-page "https://example.invalid/pinentry-fuzzguy")
+    (synopsis "Fuzzel-based pinentry with protocol context")
+    (description
+     "Pinentry Fuzzguy is a small Guile pinentry implementation for Wayland.  It
+uses Fuzzel for passphrase prompts, displays context supplied by gpg-agent, and
+falls back to pinentry-tty when a graphical prompt is unavailable.")
+    (license license:gpl3+)))

@@ -115,7 +115,7 @@
           ollama
           papirus-icon-theme
           pinentry-tty
-          pinentry-fuzzel
+          pinentry-fuzzguy
           ripgrep
           stow
           tlp

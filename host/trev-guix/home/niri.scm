@@ -23,6 +23,7 @@
                                                               "gnome-topbar"
                                                               "icons"
                                                               "fuzzel"
+                                                              "gnupg"
                                                               "hypr"
                                                               "wallpapers"
                                                               "mail"
