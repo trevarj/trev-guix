@@ -17,7 +17,8 @@ cd "$repo_root"
 
 printf 'Building %s installer ISO at %s.\n' "$image_type" "$output" >&2
 guix system image \
-  -L . \
+  -L channel \
+  -L host \
   -t "$image_type" \
   -r "$output" \
   -e '(@ (trev-guix systems installer) %stinkpad-installer)'

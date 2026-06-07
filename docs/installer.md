@@ -12,7 +12,7 @@ has caused unbootable live ISOs.
 Build it from this repository:
 
 ```sh
-trev-guix/scripts/build-stinkpad-installer-iso
+scripts/build-stinkpad-installer-iso
 ```
 
 The command creates `./stinkpad-installer.iso` as a symlink to the generated
@@ -26,7 +26,7 @@ closure or copy the `trev-guix` checkout into the installed system.
 Build and write the ISO in one command:
 
 ```sh
-trev-guix/scripts/prepare-stinkpad-installer-usb
+scripts/prepare-stinkpad-installer-usb
 ```
 
 The helper lists removable/USB disks and requires typing
@@ -35,7 +35,7 @@ The helper lists removable/USB disks and requires typing
 To write an ISO that already exists:
 
 ```sh
-trev-guix/scripts/write-stinkpad-installer-usb ./stinkpad-installer.iso
+scripts/write-stinkpad-installer-usb ./stinkpad-installer.iso
 ```
 
 ## Install
@@ -67,9 +67,10 @@ The helper will:
 - show candidate non-removable disks
 - ask which disk to wipe
 - require typing `WIPE /dev/...`
-- create the disk layout expected by `trev-guix/systems/stinkpad.scm`
+- create the disk layout expected by `host/trev-guix/systems/stinkpad.scm`
 - mount the installed system at `/mnt`
 - copy the bundled dotfiles to `/mnt/home/trev/Workspace/dotfiles`
+- copy the bundled trev-guix checkout to `/mnt/home/trev/Workspace/trev-guix`
 - seed `/mnt/home/trev/.config/guix/channels.scm`
 - run `guix system init` from the pulled channels
 - make the copied user files editable by `trev`
@@ -96,7 +97,8 @@ On first boot, unlock the LUKS root, log in as `trev`, and activate Guix Home:
 guix pull -C ~/.config/guix/channels.scm
 GUIX_PROFILE="$HOME/.config/guix/current"
 . "$GUIX_PROFILE/etc/profile"
-guix home reconfigure -e '(@ (trev-guix home niri) %home-niri-environment)'
+cd ~/Workspace/trev-guix
+guix home reconfigure -L channel -L host -e '(@ (trev-guix home niri) %home-niri-environment)'
 niri-session
 ```
 
@@ -108,7 +110,7 @@ Run the Home reconfigure with a working network connection.
 The installer intentionally creates the storage layout already declared in:
 
 ```sh
-trev-guix/systems/stinkpad.scm
+host/trev-guix/systems/stinkpad.scm
 ```
 
 Current layout:

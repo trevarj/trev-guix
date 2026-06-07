@@ -9,12 +9,21 @@
   #:use-module ((guix licenses)
                 #:prefix license:))
 
+(define (trev-guix-file file)
+  (let loop ((dirs %load-path))
+    (if (null? dirs)
+        (error "missing trev-guix file" file)
+        (let ((candidate (string-append (car dirs) "/trev-guix/files/" file)))
+          (if (file-exists? candidate)
+              (canonicalize-path candidate)
+              (loop (cdr dirs)))))))
+
 (define-public font-iosevka-jbm
   (package
     (name "font-iosevka-jbm")
     (version "1.0.0")
     (source
-     (local-file "../files/fonts-IosevkaJbm"
+     (local-file (trev-guix-file "fonts-IosevkaJbm")
                  #:recursive? #t))
     (build-system font-build-system)
     (description "My custom Iosevka font inspired by JetBrains Mono.")
@@ -27,7 +36,7 @@
     (name "font-cryptofonts")
     (version "1.0.0")
     (source
-     (local-file "../files/cryptofont.ttf"))
+     (local-file (trev-guix-file "cryptofont.ttf")))
     (build-system font-build-system)
     (description "A font for cryptocurrency symbols")
     (home-page "N/A")

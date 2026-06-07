@@ -2,12 +2,15 @@
 set -euo pipefail
 
 source_dotfiles_dir="/etc/trev-dotfiles"
+source_trev_guix_dir="/etc/trev-guix"
 source_channels_file="/etc/guix/channels.scm"
 substitute_urls_file="/etc/guix/substitute-urls"
 target_dotfiles_dir="/mnt/home/trev/Workspace/dotfiles"
+target_trev_guix_dir="/mnt/home/trev/Workspace/trev-guix"
 target_workspace_dir="/mnt/home/trev/Workspace"
 system_expr="(@ (trev-guix systems stinkpad-niri) %stinkpad-niri)"
 target_channels_file="/mnt/home/trev/.config/guix/channels.scm"
+guix_load_path_args=(-L "$source_trev_guix_dir/channel" -L "$source_trev_guix_dir/host")
 
 die() {
   printf 'error: %s\n' "$*" >&2
@@ -58,7 +61,7 @@ read_channel_string() {
 (newline)
 EOF
 
-  guix repl -q -- "$script"
+  guix repl -q "${guix_load_path_args[@]}" -- "$script"
   rm -f "$script"
 }
 
@@ -76,6 +79,7 @@ require_network() {
 require_root
 
 [ -d "$source_dotfiles_dir" ] || die "$source_dotfiles_dir is missing"
+[ -d "$source_trev_guix_dir" ] || die "$source_trev_guix_dir is missing"
 [ -f "$source_channels_file" ] || die "$source_channels_file is missing"
 [ -f "$substitute_urls_file" ] || die "$substitute_urls_file is missing"
 
@@ -112,8 +116,8 @@ efi_volume_id="${efi_uuid//-/}"
 [ -n "$swap_uuid" ] || die "could not read swap-uuid from channel"
 [ "${#efi_volume_id}" -eq 8 ] || die "EFI UUID must be an 8 digit FAT volume ID"
 
-printf 'Validating Guix system configuration from channels.\n' >&2
-guix system build "${guix_substitute_args[@]}" -n -e "$system_expr"
+printf 'Validating Guix system configuration from the bundled checkout.\n' >&2
+guix system build "${guix_substitute_args[@]}" "${guix_load_path_args[@]}" -n -e "$system_expr"
 
 printf '\nCandidate target disks:\n' >&2
 mapfile -t disks < <(
@@ -193,15 +197,17 @@ mount "$efi_part" /mnt/boot/efi
 mkdir -p "$target_workspace_dir"
 
 copy_checkout dotfiles "$source_dotfiles_dir" "$target_dotfiles_dir"
+copy_checkout trev-guix "$source_trev_guix_dir" "$target_trev_guix_dir"
 
 mkdir -p "$(dirname "$target_channels_file")"
 cp --no-preserve=ownership "$source_channels_file" "$target_channels_file"
 
 printf 'Installing Guix System target.\n' >&2
-guix system init "${guix_substitute_args[@]}" -e "$system_expr" /mnt
+guix system init "${guix_substitute_args[@]}" "${guix_load_path_args[@]}" -e "$system_expr" /mnt
 
 printf 'Making copied user files editable by trev.\n' >&2
 chown -R 1000:100 "$target_dotfiles_dir"
+chown -R 1000:100 "$target_trev_guix_dir"
 chown -R 1000:100 "/mnt/home/trev/.config/guix"
 
 printf '\nSet the login password for trev.\n' >&2

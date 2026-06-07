@@ -6,18 +6,14 @@
 
 (define %local-config-file
   (or (getenv "TREV_GUIX_LOCAL_CONFIG")
-      "/home/trev/Workspace/trev-guix/trev-guix/private/local.scm"))
+      "host/trev-guix/private/local.scm"))
 
 (define (fail format-string . args)
   (error (string-append "local system config: "
                         (apply format #f format-string args))))
 
 (define (read-local-config file)
-  (unless (file-exists? file)
-    (fail "missing ~a; create it from trev-guix/private/local.scm.example"
-          file))
-  (call-with-input-file file
-    read))
+  (call-with-input-file file read))
 
 (define (local-config-ref config key)
   (match (assoc key config)
