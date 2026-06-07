@@ -1,0 +1,335 @@
+#!@GUILE@ -s
+!#
+
+(use-modules (ice-9 binary-ports)
+             (ice-9 match)
+             (ice-9 popen)
+             (ice-9 rdelim)
+             (ice-9 regex)
+             (ice-9 textual-ports)
+             (rnrs bytevectors)
+             (rnrs io ports)
+             (srfi srfi-11)
+             (srfi srfi-13)
+             (srfi srfi-14)
+             (srfi srfi-1))
+
+(define %fuzzel "@FUZZEL@")
+(define %fallback-pinentry "@PINENTRY_TTY@")
+(define %timeout "@TIMEOUT@")
+
+(define %err-canceled "ERR 83886179 Operation cancelled <Pinentry>")
+(define %err-timeout "ERR 83886142 Timeout <Pinentry>")
+(define %err-not-confirmed "ERR 83886194 Not confirmed <Pinentry>")
+(define %err-pinentry "ERR 83886166 Pinentry error <Pinentry>")
+
+(define (env name fallback)
+  (or (getenv name) fallback))
+
+(define (truthy-env? name)
+  (match (getenv name)
+    (#f #f)
+    ("" #f)
+    ("0" #f)
+    ("no" #f)
+    (_ #t)))
+
+(define (executable? path)
+  (false-if-exception (access? path X_OK)))
+
+(define (display-available?)
+  (or (truthy-env? "PINENTRY_FUZZGUY_ALLOW_HEADLESS")
+      (getenv "WAYLAND_DISPLAY")
+      (getenv "DISPLAY")))
+
+(define (send line)
+  (display line)
+  (newline)
+  (force-output))
+
+(define (ok)
+  (send "OK"))
+
+(define (hex-digit? c)
+  (or (char-set-contains? char-set:hex-digit c)))
+
+(define (hex-value c)
+  (cond
+   ((char<=? #\0 c #\9) (- (char->integer c) (char->integer #\0)))
+   ((char<=? #\a c #\f) (+ 10 (- (char->integer c) (char->integer #\a))))
+   ((char<=? #\A c #\F) (+ 10 (- (char->integer c) (char->integer #\A))))
+   (else #f)))
+
+(define (percent-decode text)
+  (call-with-values
+      open-bytevector-output-port
+    (lambda (out get-bytevector)
+      (let ((len (string-length text)))
+        (let loop ((idx 0))
+          (when (< idx len)
+            (let ((c (string-ref text idx)))
+              (if (and (char=? c #\%)
+                       (< (+ idx 2) len)
+                       (hex-digit? (string-ref text (+ idx 1)))
+                       (hex-digit? (string-ref text (+ idx 2))))
+                  (begin
+                    (put-u8 out (+ (* 16 (hex-value (string-ref text (+ idx 1))))
+                                   (hex-value (string-ref text (+ idx 2)))))
+                    (loop (+ idx 3)))
+                  (begin
+                    (put-bytevector out (string->utf8 (string c)))
+                    (loop (+ idx 1))))))))
+      (utf8->string (get-bytevector)))))
+
+(define (percent-encode-data text)
+  (define (safe? c)
+    (and (char>=? c #\space)
+         (not (char=? c #\%))
+         (not (char=? c #\return))
+         (not (char=? c #\newline))))
+  (define (encode-byte byte)
+    (format #f "%~2,'0X" byte))
+  (call-with-output-string
+    (lambda (out)
+      (string-for-each
+       (lambda (c)
+         (if (safe? c)
+             (display c out)
+             (bytevector-for-each
+              (lambda (byte) (display (encode-byte byte) out))
+              (string->utf8 (string c)))))
+       text))))
+
+(define (starts-with? text prefix)
+  (string-prefix? prefix text))
+
+(define (command-name line)
+  (string-upcase
+   (match (string-tokenize line)
+     ((name . _) name)
+     (() ""))))
+
+(define (command-arg line name)
+  (let ((prefix (string-append name " ")))
+    (if (starts-with? line prefix)
+        (substring line (string-length prefix))
+        "")))
+
+(define (status-exit-value status)
+  (cond
+   ((status:exit-val status) => identity)
+   ((status:term-sig status) => (lambda (sig) (+ 128 sig)))
+   (else 1)))
+
+(define (fuzzel-command)
+  (env "PINENTRY_FUZZGUY_FUZZEL" %fuzzel))
+
+(define (timeout-command)
+  (env "PINENTRY_FUZZGUY_TIMEOUT" %timeout))
+
+(define (base-fuzzel-args state)
+  (let* ((title (assoc-ref state 'title))
+         (user-data (assoc-ref state 'user-data))
+         (description (assoc-ref state 'description))
+         (error (assoc-ref state 'error))
+         (application (and user-data
+                           (not (string-null? user-data))
+                           (string-append "Application: " user-data)))
+         (message (string-join (filter (lambda (part)
+                                          (and part (not (string-null? part))))
+                                        (list title application error description))
+                               "\n"))
+         (args '("--dmenu"
+                 "--log-level=error"
+                 "--layer=overlay"
+                 "--no-exit-on-keyboard-focus-loss"
+                 "--width=64")))
+    (if (string-null? message)
+        args
+        (append args (list (string-append "--mesg=" message)
+                           "--mesg-mode=wrap")))))
+
+(define (run-command/read-line input-file args)
+  (let* ((program (car args))
+         (program-args (cdr args))
+         (line #f)
+         (status 1))
+    (if input-file
+        (with-input-from-file input-file
+          (lambda ()
+            (let ((port (apply open-pipe* OPEN_READ program program-args)))
+              (set! line (read-line port))
+              (set! status (status-exit-value (close-pipe port))))))
+        (let ((port (apply open-pipe* OPEN_READ program program-args)))
+          (set! line (read-line port))
+          (set! status (status-exit-value (close-pipe port)))))
+    (values line status)))
+
+(define (with-temp-choices choices proc)
+  (let* ((template (string-append (or (getenv "TMPDIR") "/tmp")
+                                  "/pinentry-fuzzguy-XXXXXX"))
+         (port (mkstemp! template)))
+    (dynamic-wind
+      (lambda () #t)
+      (lambda ()
+        (for-each (lambda (choice)
+                    (display choice port)
+                    (newline port))
+                  choices)
+        (close-port port)
+        (proc template))
+      (lambda ()
+        (false-if-exception (delete-file template))))))
+
+(define (run-fuzzel input-file state extra-args)
+  (let* ((timeout (assoc-ref state 'timeout))
+         (fuzzel-args (append (base-fuzzel-args state) extra-args))
+         (args (if (and timeout (> timeout 0))
+                   (append (list (timeout-command)
+                                 (number->string timeout)
+                                 (fuzzel-command))
+                           fuzzel-args)
+                   (cons (fuzzel-command) fuzzel-args))))
+    (run-command/read-line input-file args)))
+
+(define (prompt-text state)
+  (let ((prompt (assoc-ref state 'prompt)))
+    (if (and prompt (not (string-null? prompt)))
+        prompt
+        "Passphrase: ")))
+
+(define (handle-getpin state)
+  (let-values (((line status)
+                (run-fuzzel #f state
+                            (list "--password"
+                                  "--prompt-only"
+                                  (prompt-text state)))))
+    (cond
+     ((= status 0)
+      (send (string-append "D " (percent-encode-data (if (eof-object? line) "" line))))
+      (ok))
+     ((= status 124) (send %err-timeout))
+     (else (send %err-canceled))))
+  (assoc-set! state 'error #f))
+
+(define (handle-confirm state one-button?)
+  (let* ((ok-label (or (assoc-ref state 'ok) "OK"))
+         (cancel-label (or (assoc-ref state 'cancel) "Cancel"))
+         (choices (if one-button? (list ok-label) (list ok-label cancel-label))))
+    (with-temp-choices
+     choices
+     (lambda (choice-file)
+       (let-values (((line status)
+                     (run-fuzzel choice-file state
+                                 (list "--prompt"
+                                       (if one-button? "Message: " "Confirm: ")
+                                       "--lines"
+                                       (number->string (length choices))
+                                       "--select"
+                                       ok-label))))
+         (cond
+          ((and (= status 0) (string=? line ok-label)) (ok))
+          ((= status 124) (send %err-timeout))
+          (one-button? (send %err-canceled))
+          (else (send %err-not-confirmed)))))))
+  (assoc-set! state 'error #f))
+
+(define (handle-option state arg)
+  (cond
+   ((starts-with? arg "pinentry-user-data=")
+    (assoc-set! state 'user-data (percent-decode (substring arg 19))))
+   ((starts-with? arg "putenv=PINENTRY_USER_DATA=")
+    (assoc-set! state 'user-data (percent-decode (substring arg 26))))
+   ((starts-with? arg "putenv=PINENTRY_USER_DATA")
+    (assoc-set! state 'user-data #f))
+   ((starts-with? arg "display=")
+    (assoc-set! state 'display (percent-decode (substring arg 8))))
+   ((starts-with? arg "ttyname=")
+    (assoc-set! state 'ttyname (percent-decode (substring arg 8))))
+   ((starts-with? arg "ttytype=")
+    (assoc-set! state 'ttytype (percent-decode (substring arg 8))))
+   ((starts-with? arg "default-ok=")
+    (assoc-set! state 'ok (percent-decode (substring arg 11))))
+   ((starts-with? arg "default-cancel=")
+    (assoc-set! state 'cancel (percent-decode (substring arg 15))))
+   ((starts-with? arg "default-prompt=")
+    (assoc-set! state 'prompt (percent-decode (substring arg 15)))))
+  (ok))
+
+(define (parse-timeout arg)
+  (let ((n (string->number arg)))
+    (if (and (integer? n) (>= n 0))
+        n
+        0)))
+
+(define (session-loop)
+  (let ((state (list (cons 'description #f)
+                     (cons 'user-data #f)
+                     (cons 'prompt "Passphrase: ")
+                     (cons 'title "Pinentry")
+                     (cons 'error #f)
+                     (cons 'ok "OK")
+                     (cons 'cancel "Cancel")
+                     (cons 'timeout 0))))
+    (let loop ()
+      (let ((line (read-line)))
+        (unless (eof-object? line)
+          (let ((cmd (command-name line)))
+            (match cmd
+              ("BYE" (ok))
+              ("GETPIN" (handle-getpin state) (loop))
+              ("CONFIRM" (handle-confirm state (string-contains line "--one-button")) (loop))
+              ("MESSAGE" (handle-confirm state #t) (loop))
+              ("SETDESC"
+               (assoc-set! state 'description (percent-decode (command-arg line "SETDESC")))
+               (ok)
+               (loop))
+              ("SETPROMPT"
+               (assoc-set! state 'prompt (percent-decode (command-arg line "SETPROMPT")))
+               (ok)
+               (loop))
+              ("SETTITLE"
+               (assoc-set! state 'title (percent-decode (command-arg line "SETTITLE")))
+               (ok)
+               (loop))
+              ("SETERROR"
+               (assoc-set! state 'error (percent-decode (command-arg line "SETERROR")))
+               (ok)
+               (loop))
+              ("SETOK"
+               (assoc-set! state 'ok (percent-decode (command-arg line "SETOK")))
+               (ok)
+               (loop))
+              ("SETCANCEL"
+               (assoc-set! state 'cancel (percent-decode (command-arg line "SETCANCEL")))
+               (ok)
+               (loop))
+              ("SETTIMEOUT"
+               (assoc-set! state 'timeout (parse-timeout (command-arg line "SETTIMEOUT")))
+               (ok)
+               (loop))
+              ("OPTION"
+               (handle-option state (command-arg line "OPTION"))
+               (loop))
+              (_
+               (ok)
+               (loop)))))))))
+
+(define (main)
+  (let ((fuzzel (fuzzel-command))
+        (fallback (env "PINENTRY_FUZZGUY_FALLBACK" %fallback-pinentry)))
+    (when (and (not (truthy-env? "PINENTRY_FUZZGUY_NO_FALLBACK"))
+               (or (not (display-available?))
+                   (not (executable? fuzzel))))
+      (execl fallback fallback))
+    (send "OK Pleased to meet you")
+    (catch #t
+      session-loop
+      (lambda (key . args)
+        (when (truthy-env? "PINENTRY_FUZZGUY_DEBUG")
+          (format (current-error-port)
+                  "pinentry-fuzzguy: ~a ~s~%"
+                  key args))
+        (send %err-pinentry)))))
+
+(main)
