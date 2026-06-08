@@ -1,12 +1,21 @@
 (define-module (trev-guix systems local)
+  #:use-module (ice-9 ftw)
   #:use-module (ice-9 format)
   #:use-module (ice-9 match)
   #:use-module (ice-9 regex)
+  #:use-module (system base compile)
   #:export (%stinkpad-local-timezone))
+
+(define %local-module-file
+  (canonicalize-path
+   (search-path %load-path "trev-guix/systems/local.scm")))
+
+(define %host-root
+  (dirname (dirname (dirname %local-module-file))))
 
 (define %local-config-file
   (or (getenv "TREV_GUIX_LOCAL_CONFIG")
-      "host/trev-guix/private/local.scm"))
+      (string-append %host-root "/trev-guix/private/local.scm")))
 
 (define (fail format-string . args)
   (error (string-append "local system config: "
