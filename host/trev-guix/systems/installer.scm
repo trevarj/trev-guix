@@ -39,7 +39,8 @@
               #:select? dotfiles-file?))
 
 (define %trev-guix-checkout
-  (local-file "../../.." "trev-guix"
+  (local-file "../../.."
+              "trev-guix"
               #:recursive? #t
               #:select? trev-guix-file?))
 
@@ -56,11 +57,12 @@
 
 (define %install-stinkpad-script
   (local-file "../../../channel/trev-guix/files/scripts/install-stinkpad-guix"
-              "install-stinkpad-guix"))
+   "install-stinkpad-guix"))
 
 (define %finish-stinkpad-install-script
-  (local-file "../../../channel/trev-guix/files/scripts/finish-stinkpad-install"
-              "finish-stinkpad-install"))
+  (local-file
+   "../../../channel/trev-guix/files/scripts/finish-stinkpad-install"
+   "finish-stinkpad-install"))
 
 (define %install-stinkpad-command
   (program-file "install-stinkpad"
