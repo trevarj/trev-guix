@@ -20,7 +20,8 @@
                 #:prefix license:))
 
 (define (trev-guix-file file)
-  (let loop ((dirs %load-path))
+  (let loop
+    ((dirs %load-path))
     (if (null? dirs)
         (error "missing trev-guix file" file)
         (let ((candidate (string-append (car dirs) "/trev-guix/files/" file)))
@@ -108,7 +109,8 @@ controls, workspaces, and custom script modules.")
   (package
     (name "pinentry-fuzzguy")
     (version "0.1.0")
-    (source (local-file (trev-guix-file "pinentry-fuzzguy")))
+    (source
+     (local-file (trev-guix-file "pinentry-fuzzguy")))
     (build-system trivial-build-system)
     (arguments
      (list
@@ -121,11 +123,14 @@ controls, workspaces, and custom script modules.")
             (mkdir-p bin)
             (copy-file #$source target)
             (substitute* target
-              (("@GUILE@") #$(file-append guile-3.0 "/bin/guile"))
-              (("@FUZZEL@") #$(file-append fuzzel "/bin/fuzzel"))
+              (("@GUILE@")
+               #$(file-append guile-3.0 "/bin/guile"))
+              (("@FUZZEL@")
+               #$(file-append fuzzel "/bin/fuzzel"))
               (("@PINENTRY_TTY@")
                #$(file-append pinentry-tty "/bin/pinentry-tty"))
-              (("@TIMEOUT@") #$(file-append coreutils "/bin/timeout")))
+              (("@TIMEOUT@")
+               #$(file-append coreutils "/bin/timeout")))
             (chmod target #o555)))))
     (inputs (list coreutils fuzzel guile-3.0 pinentry-tty))
     (home-page "https://example.invalid/pinentry-fuzzguy")

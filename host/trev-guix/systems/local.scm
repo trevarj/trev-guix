@@ -7,8 +7,7 @@
   #:export (%stinkpad-local-timezone))
 
 (define %local-module-file
-  (canonicalize-path
-   (search-path %load-path "trev-guix/systems/local.scm")))
+  (canonicalize-path (search-path %load-path "trev-guix/systems/local.scm")))
 
 (define %host-root
   (dirname (dirname (dirname %local-module-file))))
@@ -22,7 +21,8 @@
                         (apply format #f format-string args))))
 
 (define (read-local-config file)
-  (call-with-input-file file read))
+  (call-with-input-file file
+    read))
 
 (define (local-config-ref config key)
   (match (assoc key config)

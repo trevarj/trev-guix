@@ -10,7 +10,8 @@
                 #:prefix license:))
 
 (define (trev-guix-file file)
-  (let loop ((dirs %load-path))
+  (let loop
+    ((dirs %load-path))
     (if (null? dirs)
         (error "missing trev-guix file" file)
         (let ((candidate (string-append (car dirs) "/trev-guix/files/" file)))
