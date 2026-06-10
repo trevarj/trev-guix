@@ -1,7 +1,9 @@
-(use-modules (ice-9 popen)
-             (ice-9 rdelim)
-             (ice-9 match)
-             (srfi srfi-13))
+(define-module (trev-guix files mail bin mail-stage-deleted)
+  #:use-module (ice-9 popen)
+  #:use-module (ice-9 rdelim)
+  #:use-module (ice-9 match)
+  #:use-module (srfi srfi-13)
+  #:export (main))
 
 (define %notmuch
   (or (getenv "NOTMUCH") "/home/trev/.guix-home/profile/bin/notmuch"))
