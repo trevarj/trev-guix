@@ -15,6 +15,7 @@
   #:use-module (trev-guix packages emacs)
   #:use-module (trev-guix packages fonts)
   #:use-module (trev-guix packages guix)
+  #:use-module (trev-guix packages mail)
   #:use-module (trev-guix packages networking)
   #:use-module (trev-guix services flatpak)
   #:use-module (trev-guix services fontconfig)
@@ -107,6 +108,7 @@
                    isync
                    jq
                    kitty
+                   mail-scripts
                    mpv
                    msmtp
                    nautilus
