@@ -1,9 +1,11 @@
-(use-modules (ice-9 popen)
-             (ice-9 rdelim)
-             (ice-9 regex)
-             (ice-9 match)
-             (srfi srfi-1)
-             (srfi srfi-13))
+(define-module (trev-guix files mail bin mail-authinfo-password)
+  #:use-module (ice-9 popen)
+  #:use-module (ice-9 rdelim)
+  #:use-module (ice-9 regex)
+  #:use-module (ice-9 match)
+  #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-13)
+  #:export (main))
 
 (define (die fmt . args)
   (apply format
