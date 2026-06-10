@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+
+mkdir -p "$HOME/Mail/main" "$HOME/Mail/lists"
+/home/trev/.guix-home/profile/bin/notmuch new
+/home/trev/.guix-home/profile/bin/mail-stage-deleted.scm
+/home/trev/.guix-home/profile/bin/mbsync mail
+/home/trev/.guix-home/profile/bin/notmuch new
+# Notmuch tagging (list/account/archive tags) is applied by the notmuch-mbsync
+# service's tag rules on its next pass.
+
+# Keep downloaded mailing-list archive mbox caches bounded.
+if [ -d "$HOME/.cache/mail-archives" ]; then
+    /run/current-system/profile/bin/find "$HOME/.cache/mail-archives" -type f -mtime +90 -delete
+fi
