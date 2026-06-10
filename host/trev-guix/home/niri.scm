@@ -14,7 +14,9 @@
     (packages %home-base-packages)
     (services
      (cons* (service home-dotfiles-service-type
-                     (home-dotfiles-configuration (directories (list
+                     (home-dotfiles-configuration (source-directory
+                                                   %dotfiles-directory)
+                                                  (directories (list
                                                                 %dotfiles-directory))
                                                   (layout 'stow)
                                                   (packages '("zsh" "guix"
