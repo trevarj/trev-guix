@@ -68,6 +68,7 @@
                    aspell-dict-ru
                    btop
                    byedpi
+                   claude-code
                    codex
                    curl
                    difftastic
