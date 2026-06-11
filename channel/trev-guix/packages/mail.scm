@@ -21,7 +21,8 @@
   (package
     (name "mail-scripts")
     (version "1.0")
-    (source #f)
+    (source
+     #f)
     (build-system trivial-build-system)
     (arguments
      (list
@@ -41,11 +42,14 @@
                 (call-with-output-file dest
                   (lambda (out)
                     (format out "#!/bin/sh\n")
-                    (format out "exec ~a --no-auto-compile -e '(@ (~a) main)' -s \"$0\" \"$@\"\n"
-                            guile module)
+                    (format out
+                     "exec ~a --no-auto-compile -e '(@ (~a) main)' -s \"$0\" \"$@\"
+"
+                     guile module)
                     (format out "!#\n")
                     (call-with-input-file src
-                      (lambda (in) (dump-port in out)))))
+                      (lambda (in)
+                        (dump-port in out)))))
                 (chmod dest #o555)))
 
             (define (install-shell-script name src)
@@ -53,20 +57,17 @@
                 (copy-file src dest)
                 (chmod dest #o555)))
 
-            (install-guile-script
-             "mail-authinfo-password.scm"
+            (install-guile-script "mail-authinfo-password.scm"
              "trev-guix files mail bin mail-authinfo-password"
              #$(local-file "../files/mail/bin/mail-authinfo-password.scm"))
-            (install-guile-script
-             "mail-stage-deleted.scm"
+            (install-guile-script "mail-stage-deleted.scm"
              "trev-guix files mail bin mail-stage-deleted"
              #$(local-file "../files/mail/bin/mail-stage-deleted.scm"))
-            (install-shell-script
-             "mail-sync"
-             #$(local-file "../files/mail/bin/mail-sync"))
-            (install-shell-script
-             "mail-fetch-gnu-archive"
-             #$(local-file "../files/mail/bin/mail-fetch-gnu-archive"))))))
+            (install-shell-script "mail-sync"
+                                  #$(local-file "../files/mail/bin/mail-sync"))
+            (install-shell-script "mail-fetch-gnu-archive"
+                                  #$(local-file
+                                     "../files/mail/bin/mail-fetch-gnu-archive"))))))
     (synopsis "Helper scripts for the notmuch + mbsync + Gmail mail setup")
     (description
      "Helpers that drive the personal mail flow: credential lookup from
