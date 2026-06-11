@@ -59,11 +59,11 @@
                                                       (cons 'host
                                                             "imap.gmail.com")
                                                       (cons 'user
-                                                            "tmarjeski@gmail.com")
+                                                       "tmarjeski@gmail.com")
                                                       (cons 'pass-env
-                                                            "MBSYNC_PASS_MAIN")
+                                                       "MBSYNC_PASS_MAIN")
                                                       (cons 'patterns
-                                                            %notmuch-gmail-patterns)
+                                                       %notmuch-gmail-patterns)
                                                       (cons 'maildir
                                                             (string-append
                                                              %notmuch-mail-dir
@@ -73,26 +73,28 @@
                                                       (cons 'host
                                                             "imap.gmail.com")
                                                       (cons 'user
-                                                            "tarjeski@gmail.com")
+                                                       "tarjeski@gmail.com")
                                                       (cons 'pass-env
-                                                            "MBSYNC_PASS_LISTS")
+                                                       "MBSYNC_PASS_LISTS")
                                                       (cons 'patterns
-                                                            %notmuch-gmail-patterns)
+                                                       %notmuch-gmail-patterns)
                                                       (cons 'maildir
                                                             (string-append
                                                              %notmuch-mail-dir
                                                              "/lists/")))))
                                 (tag-rules %notmuch-tag-rules)
                                 ;; Serialized into the generated ~/.notmuch-config.
-                                (notmuch-settings
-                                 `((database-path . ,%notmuch-mail-dir)
-                                   (user-name . "Trevor Arjeski")
-                                   (primary-email . "tmarjeski@gmail.com")
-                                   (other-email . ())
-                                   (new-tags . ("new" "unread"))
-                                   (new-ignore . (".uidvalidity" ".mbsyncstate"))
-                                   (exclude-tags . ("deleted" "spam"))
-                                   (synchronize-flags . #t)))
+                                (notmuch-settings `((database-path unquote
+                                                     %notmuch-mail-dir)
+                                                    (user-name . "Trevor Arjeski")
+                                                    (primary-email . "tmarjeski@gmail.com")
+                                                    (other-email)
+                                                    (new-tags "new" "unread")
+                                                    (new-ignore ".uidvalidity"
+                                                     ".mbsyncstate")
+                                                    (exclude-tags "deleted"
+                                                                  "spam")
+                                                    (synchronize-flags . #t)))
                                 ;; Stage `tag:deleted' as the Maildir `T' flag
                                 ;; before mbsync pushes + expunges (see top-of-file
                                 ;; note on the required Gmail IMAP settings).

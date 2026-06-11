@@ -28,7 +28,6 @@
                                                               "gnupg"
                                                               "hypr"
                                                               "wallpapers"
-                                                              "mail"
                                                               "X"))
                                                   (excluded '("\\.zshenv"
                                                               "\\.zshrc"
