@@ -18,17 +18,9 @@
 (define (notmuch-config-path env-var fallback)
   (or (getenv env-var) fallback))
 
-(define %notmuch-dotfiles-dir
-  (notmuch-config-path "NOTMUCH_DOTFILES_DIR"
-                       (string-append (notmuch-config-default-home)
-                                      "/Workspace/dotfiles")))
-
 (define %notmuch-mail-dir
   (notmuch-config-path "NOTMUCH_MAIL_DIR"
                        (string-append (notmuch-config-default-home) "/Mail")))
-
-(define %notmuch-dotmail-dir
-  (string-append %notmuch-dotfiles-dir "/mail"))
 
 (define %notmuch-tag-rules
   '(((query . "tag:account-main and not path:main/**") (tags -account-main))
@@ -57,28 +49,59 @@
                                                                                +codeberg))
     ((query . "tag:new") (tags -new))))
 
+;; Gmail IMAP folders to sync for each account.
+(define %notmuch-gmail-patterns
+  (list "INBOX" "[Gmail]/Sent Mail" "[Gmail]/Trash"))
+
 (define %notmuch-mbsync-configuration
   (notmuch-mbsync-configuration (accounts (list (list (cons 'id "main-gmail")
                                                       (cons 'channel "main")
+                                                      (cons 'host
+                                                            "imap.gmail.com")
+                                                      (cons 'user
+                                                            "tmarjeski@gmail.com")
+                                                      (cons 'pass-env
+                                                            "MBSYNC_PASS_MAIN")
+                                                      (cons 'patterns
+                                                            %notmuch-gmail-patterns)
                                                       (cons 'maildir
                                                             (string-append
                                                              %notmuch-mail-dir
                                                              "/main/")))
                                                 (list (cons 'id "lists-gmail")
                                                       (cons 'channel "lists")
+                                                      (cons 'host
+                                                            "imap.gmail.com")
+                                                      (cons 'user
+                                                            "tarjeski@gmail.com")
+                                                      (cons 'pass-env
+                                                            "MBSYNC_PASS_LISTS")
+                                                      (cons 'patterns
+                                                            %notmuch-gmail-patterns)
                                                       (cons 'maildir
                                                             (string-append
                                                              %notmuch-mail-dir
                                                              "/lists/")))))
                                 (tag-rules %notmuch-tag-rules)
+                                ;; Serialized into the generated ~/.notmuch-config.
+                                (notmuch-settings
+                                 `((database-path . ,%notmuch-mail-dir)
+                                   (user-name . "Trevor Arjeski")
+                                   (primary-email . "tmarjeski@gmail.com")
+                                   (other-email . ())
+                                   (new-tags . ("new" "unread"))
+                                   (new-ignore . (".uidvalidity" ".mbsyncstate"))
+                                   (exclude-tags . ("deleted" "spam"))
+                                   (synchronize-flags . #t)))
                                 ;; Stage `tag:deleted' as the Maildir `T' flag
                                 ;; before mbsync pushes + expunges (see top-of-file
                                 ;; note on the required Gmail IMAP settings).
                                 (tag-command (string-append (notmuch-config-default-home)
                                               "/.guix-home/profile/bin/mail-stage-deleted.scm"))
-                                ;; Decrypted once by the daemon and held in memory;
-                                ;; mbsync's PassCmd reads these env vars (see
-                                ;; dotfiles/mail/.mbsyncrc).
+                                ;; Decrypted once by the daemon and held in
+                                ;; memory; each account's generated PassCmd reads
+                                ;; its env var (and falls back to this command
+                                ;; for manual mbsync runs).
                                 (credentials (let ((authinfo (string-append (notmuch-config-default-home)
                                                               "/.guix-home/profile/bin/mail-authinfo-password.scm")))
                                                (list (list "MBSYNC_PASS_MAIN"
@@ -88,10 +111,4 @@
                                                      (list "MBSYNC_PASS_LISTS"
                                                       authinfo
                                                       "imap.gmail.com"
-                                                      "tarjeski@gmail.com"))))
-                                (mbsyncrc-file (string-append
-                                                %notmuch-dotmail-dir
-                                                "/.mbsyncrc"))
-                                (notmuch-config-file (string-append
-                                                      %notmuch-dotmail-dir
-                                                      "/.notmuch-config"))))
+                                                      "tarjeski@gmail.com"))))))
