@@ -5,6 +5,7 @@
   #:use-module (gnu services)
   #:use-module (guix gexp)
   #:use-module (guix records)
+  #:use-module (srfi srfi-13)
   #:export (notmuch-mbsync-configuration notmuch-mbsync-configuration?
             notmuch-mbsync-configuration-dry-run
             notmuch-mbsync-configuration-verbose
@@ -17,6 +18,7 @@
             notmuch-mbsync-configuration-notmuch-config-file
             notmuch-mbsync-configuration-interval-seconds
             notmuch-mbsync-configuration-credentials
+            notmuch-mbsync-configuration-notmuch-settings
             notmuch-mbsync-service-type))
 
 (define-record-type* <notmuch-mbsync-configuration>
@@ -44,11 +46,21 @@
   (tag-command notmuch-mbsync-configuration-tag-command
                (default #f))
 
-  ;; Config files symlinked into $HOME on activation.
+  ;; Config files symlinked into $HOME on activation.  When #f (the default)
+  ;; they are GENERATED from this record (accounts/credentials -> .mbsyncrc,
+  ;; notmuch-settings -> .notmuch-config); set them to a file-like or path to
+  ;; override the generated output with a hand-written file.
   (mbsyncrc-file notmuch-mbsync-configuration-mbsyncrc-file
                  (default #f))
   (notmuch-config-file notmuch-mbsync-configuration-notmuch-config-file
                        (default #f))
+
+  ;; Settings serialized into the generated ~/.notmuch-config.  An alist of
+  ;; (KEY . VALUE); list-valued KEYs are joined with `;'.  Recognized keys:
+  ;; database-path, user-name, primary-email, other-email (list), new-tags
+  ;; (list), new-ignore (list), exclude-tags (list), synchronize-flags (bool).
+  (notmuch-settings notmuch-mbsync-configuration-notmuch-settings
+                    (default '()))
 
   ;; Daemon behaviour: how long to sleep between sync passes, and the
   ;; credentials to decrypt ONCE and cache in the environment so that mbsync
@@ -175,10 +187,153 @@
                               (documentation
                                "Synchronize Maildir accounts and sync notmuch tags.")))))
 
+;;; Generate ~/.mbsyncrc and ~/.notmuch-config from the configuration record so
+;;; the structured account/credential/notmuch data is the single source of
+;;; truth instead of hand-maintained dotfiles.
+
+(define %mbsync-certificate-file "/etc/ssl/certs/ca-certificates.crt")
+(define %mbsync-group-name "mail")
+
+(define (strip-trailing-slash path)
+  (if (and (string? path)
+           (> (string-length path) 1)
+           (char=? (string-ref path (- (string-length path) 1)) #\/))
+      (strip-trailing-slash (substring path 0 (- (string-length path) 1)))
+      path))
+
+;; PassCmd that prefers the daemon-exported ENV var and falls back to FALLBACK
+;; (the gpg lookup) for manual mbsync / mail-sync runs.  Inner double quotes are
+;; escaped because the whole command is itself double-quoted in the rc file.
+(define (mbsync-passcmd env fallback)
+  (string-append
+   "\"sh -c 'if [ -n \\\"$" env "\\\" ]; then printf %s \\\"$" env
+   "\\\"; else " fallback "; fi'\""))
+
+;; The gpg-lookup command for ENV, taken from the `credentials' list so the
+;; PassCmd fallback can never drift from the secret the daemon caches.
+(define (credential-fallback-command credentials env)
+  (let ((entry (assoc env credentials)))
+    (if entry
+        (string-join (cdr entry) " ")
+        (error "notmuch-mbsync: no credential for pass-env" env))))
+
+(define (account->mbsyncrc-block account credentials)
+  (let* ((id (assoc-ref account 'id))
+         (channel (assoc-ref account 'channel))
+         (host (assoc-ref account 'host))
+         (user (assoc-ref account 'user))
+         (pass-env (assoc-ref account 'pass-env))
+         (maildir (assoc-ref account 'maildir))
+         (patterns (or (assoc-ref account 'patterns) '()))
+         (base (strip-trailing-slash maildir))
+         (remote (string-append channel "-remote"))
+         (local (string-append channel "-local")))
+    (string-join
+     (list (string-append "IMAPAccount " id)
+           (string-append "Host " host)
+           (string-append "User " user)
+           (string-append "PassCmd "
+                          (mbsync-passcmd
+                           pass-env
+                           (credential-fallback-command credentials pass-env)))
+           "TLSType IMAPS"
+           (string-append "CertificateFile " %mbsync-certificate-file)
+           ""
+           (string-append "IMAPStore " remote)
+           (string-append "Account " id)
+           ""
+           (string-append "MaildirStore " local)
+           "SubFolders Verbatim"
+           (string-append "Path " maildir)
+           (string-append "Inbox " base "/INBOX")
+           ""
+           (string-append "Channel " channel)
+           (string-append "Far :" remote ":")
+           (string-append "Near :" local ":")
+           (string-append "Patterns "
+                          (string-join (map (lambda (p)
+                                              (string-append "\"" p "\""))
+                                            patterns)
+                                       " "))
+           "Create Both"
+           "Expunge Both"
+           "SyncState *")
+     "\n")))
+
+(define (notmuch-mbsync-mbsyncrc config)
+  (let* ((accounts (notmuch-mbsync-configuration-accounts config))
+         (credentials (notmuch-mbsync-configuration-credentials config))
+         (blocks (map (lambda (account)
+                        (account->mbsyncrc-block account credentials))
+                      accounts))
+         (group (string-join
+                 (cons (string-append "Group " %mbsync-group-name)
+                       (map (lambda (account)
+                              (string-append "Channel "
+                                             (assoc-ref account 'channel)))
+                            accounts))
+                 "\n")))
+    (plain-file "mbsyncrc"
+                (string-append (string-join blocks "\n\n")
+                               "\n\n" group "\n"))))
+
+;; "a;b;" form notmuch uses for multi-valued fields; "" for the empty list.
+(define (notmuch-semicolon-list items)
+  (if (null? items)
+      ""
+      (string-append (string-join items ";") ";")))
+
+(define (notmuch-config-section name pairs)
+  (string-join
+   (cons (string-append "[" name "]")
+         (map (lambda (kv)
+                (string-append (car kv) "=" (cdr kv)))
+              pairs))
+   "\n"))
+
+(define (notmuch-mbsync-notmuch-config config)
+  (let* ((settings (notmuch-mbsync-configuration-notmuch-settings config))
+         (get (lambda (key default)
+                (let ((value (assoc key settings)))
+                  (if value (cdr value) default)))))
+    (plain-file
+     "notmuch-config"
+     (string-append
+      (notmuch-config-section
+       "database"
+       `(("path" . ,(get 'database-path "/home/trev/Mail"))))
+      "\n\n"
+      (notmuch-config-section
+       "user"
+       `(("name" . ,(get 'user-name ""))
+         ("primary_email" . ,(get 'primary-email ""))
+         ("other_email" . ,(notmuch-semicolon-list (get 'other-email '())))))
+      "\n\n"
+      (notmuch-config-section
+       "new"
+       `(("tags" . ,(notmuch-semicolon-list
+                     (get 'new-tags '("new" "unread"))))
+         ("ignore" . ,(notmuch-semicolon-list
+                       (get 'new-ignore '(".uidvalidity" ".mbsyncstate"))))))
+      "\n\n"
+      (notmuch-config-section
+       "search"
+       `(("exclude_tags" . ,(notmuch-semicolon-list
+                             (get 'exclude-tags '("deleted" "spam"))))))
+      "\n\n"
+      (notmuch-config-section
+       "maildir"
+       `(("synchronize_flags" . ,(if (get 'synchronize-flags #t)
+                                     "true"
+                                     "false"))))
+      "\n"))))
+
 (define (notmuch-mbsync-activate-config-files config)
-  (let ((mbsyncrc-source (notmuch-mbsync-configuration-mbsyncrc-file config))
-        (notmuch-config-source (notmuch-mbsync-configuration-notmuch-config-file
-                                config)))
+  (let ((mbsyncrc-source (or (notmuch-mbsync-configuration-mbsyncrc-file config)
+                             (notmuch-mbsync-mbsyncrc config)))
+        (notmuch-config-source (or (notmuch-mbsync-configuration-notmuch-config-file
+                                    config)
+                                   (notmuch-mbsync-notmuch-config config))))
     #~(begin
         (define (ensure-symlink source target)
           (when source

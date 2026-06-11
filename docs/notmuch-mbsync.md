@@ -26,8 +26,10 @@ alongside an `~/Mail/archive/` tree for imported mailing-list archives.
 | `channel/trev-guix/files/notmuch-config.scm` | The concrete `%notmuch-mbsync-configuration` and `%notmuch-tag-rules` consumed by the home config. |
 | `channel/trev-guix/packages/mail.scm` | The `mail-scripts` package — installs the helper scripts onto `PATH`. |
 | `channel/trev-guix/files/mail/bin/` | The helper script sources (two Guile `.scm`, two POSIX shell). |
-| `~/Workspace/dotfiles/mail/.mbsyncrc` | isync channel/account definitions (stowed to `~/.mbsyncrc`). |
-| `~/Workspace/dotfiles/mail/.notmuch-config` | notmuch database settings (stowed to `~/.notmuch-config`). |
+
+`~/.mbsyncrc` and `~/.notmuch-config` are **not** hand-maintained dotfiles — they
+are generated from `%notmuch-mbsync-configuration` (see [Generated config
+files](#generated-config-files) below) and symlinked into `$HOME` from the store.
 
 The service is instantiated in `host/trev-guix/home/base.scm`:
 
@@ -60,9 +62,12 @@ A second Shepherd extension (`home-activation-service-type`) symlinks the config
 files into `$HOME` on every `guix home reconfigure`:
 
 ```
-~/.mbsyncrc        -> dotfiles/mail/.mbsyncrc
-~/.notmuch-config  -> dotfiles/mail/.notmuch-config
+~/.mbsyncrc        -> /gnu/store/…-mbsyncrc          (generated)
+~/.notmuch-config  -> /gnu/store/…-notmuch-config    (generated)
 ```
+
+See [Generated config files](#generated-config-files) for how those store items
+are produced from the configuration record.
 
 ### Per-account sync pass
 
@@ -203,35 +208,50 @@ Installed to the home profile's `bin/` (on `PATH`).  The two Guile scripts are
 | `enabled` | `#t` | Whether the Shepherd service is created. |
 | `dry-run` | `#f` | Log commands without executing them. |
 | `verbose` | `#f` | Extra logging. |
-| `accounts` | `'()` | List of account alists: `id`, `channel`, `maildir` (and optional per-account overrides). |
+| `accounts` | `'()` | List of account alists. The orchestrator reads `id`, `channel`, `maildir` (plus optional per-account command/`tag-rules` overrides); the `.mbsyncrc` generator additionally reads `host`, `user`, `pass-env`, `patterns`. |
 | `tag-rules` | `'()` | The tag-rule list described above. |
 | `mbsync-command` | `"mbsync"` | mbsync binary. |
 | `notmuch-command` | `"notmuch"` | notmuch binary. |
 | `tag-command` | `#f` | Command run after `notmuch new`, before the push — here, `mail-stage-deleted.scm`. |
-| `mbsyncrc-file` | `#f` | Source for the `~/.mbsyncrc` activation symlink. |
-| `notmuch-config-file` | `#f` | Source for the `~/.notmuch-config` activation symlink. |
+| `mbsyncrc-file` | `#f` | Override for `~/.mbsyncrc`. When `#f`, the file is **generated** from `accounts`/`credentials`. |
+| `notmuch-config-file` | `#f` | Override for `~/.notmuch-config`. When `#f`, the file is **generated** from `notmuch-settings`. |
+| `notmuch-settings` | `'()` | Alist serialized into the generated `~/.notmuch-config` (see below). |
 | `interval-seconds` | `600` | Daemon sleep between sync passes. |
 | `credentials` | `'()` | `(ENV-VAR COMMAND ARG …)` entries decrypted once and cached. |
 
-### `.mbsyncrc` essentials
+### Generated config files
 
-Each account syncs only `INBOX`, `[Gmail]/Sent Mail`, and `[Gmail]/Trash`
-(`Patterns`), with `Create Both`, `Expunge Both`, and `SyncState *`.  `Expunge
-Both` is what makes the `\Deleted`/trash flow work.
+`~/.mbsyncrc` and `~/.notmuch-config` are **generated from the configuration
+record** by the service's activation extension (serializers
+`notmuch-mbsync-mbsyncrc` / `notmuch-mbsync-notmuch-config` in
+`services/notmuch-mbsync.scm`), turned into `plain-file` store items, and
+symlinked into `$HOME`.  This keeps the structured account/credential/notmuch
+data as the single source of truth — there are no hand-maintained mail dotfiles.
+Set `mbsyncrc-file` / `notmuch-config-file` to a file-like or path to override a
+generated file with a hand-written one.
 
-### `.notmuch-config` essentials
+**`.mbsyncrc`** — one `IMAPAccount`/`IMAPStore`/`MaildirStore`/`Channel` block
+per account, then a `Group mail` joining the channels.  Per account it reads
+`id` (account/store names), `channel`, `host`, `user`, `maildir`
+(`Path`/`Inbox`), and `patterns`.  The `PassCmd` prefers the daemon-exported
+`pass-env` var and falls back to the matching `credentials` command (so the
+fallback can't drift from the cached secret).  Global settings are constant:
+`TLSType IMAPS`, the system `CertificateFile`, `Create Both`, `Expunge Both`
+(what makes the `\Deleted`/trash flow work), and `SyncState *`.
 
-```
-[new]
-tags=new;unread;
-ignore=.uidvalidity;.mbsyncstate;
+**`.notmuch-config`** — built from the `notmuch-settings` alist.  Recognized
+keys (list-valued ones are joined with `;`):
 
-[search]
-exclude_tags=deleted;spam;
-
-[maildir]
-synchronize_flags=true
-```
+| Key | Example | Section |
+|-----|---------|---------|
+| `database-path` | `"/home/trev/Mail"` | `[database] path` |
+| `user-name` | `"Trevor Arjeski"` | `[user] name` |
+| `primary-email` | `"tmarjeski@gmail.com"` | `[user] primary_email` |
+| `other-email` | `()` | `[user] other_email` |
+| `new-tags` | `("new" "unread")` | `[new] tags` |
+| `new-ignore` | `(".uidvalidity" ".mbsyncstate")` | `[new] ignore` |
+| `exclude-tags` | `("deleted" "spam")` | `[search] exclude_tags` |
+| `synchronize-flags` | `#t` | `[maildir] synchronize_flags` |
 
 `synchronize_flags=true` keeps the standard Maildir flags (`F`/`R`/`S`/…) in sync
 with notmuch tags.  `exclude_tags` hides those tags from normal searches *except*
@@ -327,3 +347,6 @@ herd restart notmuch-mbsync              # pick up the new runner; unlock once a
 - **Helper scripts** were moved out of the dotfiles tree into this channel as the
   `mail-scripts` package, and the credential/deletion-staging scripts were
   rewritten from POSIX shell to Guile.
+- **`~/.mbsyncrc` and `~/.notmuch-config`** were the last hand-maintained mail
+  dotfiles; they are now *generated* from `%notmuch-mbsync-configuration` so the
+  account/credential/notmuch data has a single source of truth.
