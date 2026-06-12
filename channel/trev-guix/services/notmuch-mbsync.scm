@@ -224,57 +224,55 @@
         (string-join (cdr entry) " ")
         (error "notmuch-mbsync: no credential for pass-env" env))))
 
+;; An mbsync section is a list of (KEY VALUE) directives; a block is a list
+;; of sections separated by blank lines.
+(define (mbsync-section->string section)
+  (string-join (map (lambda (directive)
+                      (string-append (car directive) " "
+                                     (cadr directive))) section) "\n"))
+
+(define (mbsync-sections->string sections)
+  (string-join (map mbsync-section->string sections) "\n\n"))
+
+(define (mbsync-quote-pattern pattern)
+  (string-append "\"" pattern "\""))
+
 (define (account->mbsyncrc-block account credentials)
-  (let* ((id (assoc-ref account
-                        'id))
-         (channel
-           (assoc-ref account
-                      'channel))
-         (host (assoc-ref account
-                          'host))
-         (user (assoc-ref account
-                          'user))
-         (pass-env (assoc-ref account
-                              'pass-env))
-         (maildir (assoc-ref account
-                             'maildir))
-         (patterns (or (assoc-ref account
-                                  'patterns)
+  (let* ((ref (lambda (key)
+                (assoc-ref account key)))
+         (id (ref 'id))
+         (channel (ref 'channel))
+         (maildir (ref 'maildir))
+         (pass-env (ref 'pass-env))
+         (patterns (or (ref 'patterns)
                        '()))
          (base (strip-trailing-slash maildir))
          (remote (string-append channel "-remote"))
          (local (string-append channel "-local")))
-    (string-join (list (string-append "IMAPAccount " id)
-                       (string-append "Host " host)
-                       (string-append "User " user)
-                       (string-append "PassCmd "
-                                      (mbsync-passcmd pass-env
-                                                      (credential-fallback-command
-                                                       credentials pass-env)))
-                       "TLSType IMAPS"
-                       (string-append "CertificateFile "
-                                      %mbsync-certificate-file)
-                       ""
-                       (string-append "IMAPStore " remote)
-                       (string-append "Account " id)
-                       ""
-                       (string-append "MaildirStore " local)
-                       "SubFolders Verbatim"
-                       (string-append "Path " maildir)
-                       (string-append "Inbox " base "/INBOX")
-                       ""
-                       (string-append "Channel " channel)
-                       (string-append "Far :" remote ":")
-                       (string-append "Near :" local ":")
-                       (string-append "Patterns "
-                                      (string-join (map (lambda (p)
-                                                          (string-append "\""
-                                                                         p
-                                                                         "\""))
-                                                        patterns) " "))
-                       "Create Both"
-                       "Expunge Both"
-                       "SyncState *") "\n")))
+    (mbsync-sections->string `((("IMAPAccount" ,id)
+                                ("Host" ,(ref 'host))
+                                ("User" ,(ref 'user))
+                                ("PassCmd" ,(mbsync-passcmd pass-env
+                                                            (credential-fallback-command
+                                                             credentials
+                                                             pass-env)))
+                                ("TLSType" "IMAPS")
+                                ("CertificateFile" ,%mbsync-certificate-file))
+                               (("IMAPStore" ,remote)
+                                ("Account" ,id))
+                               (("MaildirStore" ,local)
+                                ("SubFolders" "Verbatim")
+                                ("Path" ,maildir)
+                                ("Inbox" ,(string-append base "/INBOX")))
+                               (("Channel" ,channel)
+                                ("Far" ,(string-append ":" remote ":"))
+                                ("Near" ,(string-append ":" local ":"))
+                                ("Patterns" ,(string-join (map
+                                                           mbsync-quote-pattern
+                                                           patterns) " "))
+                                ("Create" "Both")
+                                ("Expunge" "Both")
+                                ("SyncState" "*"))))))
 
 (define (notmuch-mbsync-mbsyncrc config)
   (let* ((accounts (notmuch-mbsync-configuration-accounts config))
@@ -282,12 +280,13 @@
          (blocks (map (lambda (account)
                         (account->mbsyncrc-block account credentials))
                       accounts))
-         (group (string-join (cons (string-append "Group " %mbsync-group-name)
-                                   (map (lambda (account)
-                                          (string-append "Channel "
-                                                         (assoc-ref account
-                                                                    'channel)))
-                                        accounts)) "\n")))
+         (group (mbsync-section->string (cons (list "Group"
+                                                    %mbsync-group-name)
+                                              (map (lambda (account)
+                                                     (list "Channel"
+                                                           (assoc-ref account
+                                                                      'channel)))
+                                                   accounts)))))
     (plain-file "mbsyncrc"
                 (string-append (string-join blocks "\n\n") "\n\n" group "\n"))))
 
