@@ -79,7 +79,6 @@
                    emacs-next-next-pgtk
                    (list emacs-next-next-pgtk "doc")
                    emacs-guix
-                   emacs-notmuch
                    emacs-vterm
                    eza
                    fd
