@@ -92,9 +92,20 @@
                                                     (new-tags "new" "unread")
                                                     (new-ignore ".uidvalidity"
                                                      ".mbsyncstate")
-                                                    (exclude-tags "deleted"
-                                                                  "spam")
+                                                    ;; `deleted' is hidden per
+                                                    ;; view (main searches add
+                                                    ;; `not tag:deleted'), NOT
+                                                    ;; globally, so a dup deleted
+                                                    ;; from main stays visible in
+                                                    ;; the lists forum.
+                                                    (exclude-tags "spam")
                                                     (synchronize-flags . #t)))
+                                ;; Mailboxes whose physical copies the delete
+                                ;; staging must never touch (read-only forum):
+                                ;; deleting a deduplicated message from main will
+                                ;; not remove its lists copy.
+                                (read-only-paths
+                                 (list (string-append %notmuch-mail-dir "/lists/")))
                                 ;; Stage `tag:deleted' as the Maildir `T' flag
                                 ;; before mbsync pushes + expunges (see top-of-file
                                 ;; note on the required Gmail IMAP settings).

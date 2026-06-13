@@ -136,8 +136,8 @@ mark it `\Deleted` and expunge it so Gmail moves it to Trash server-side.
 
 1. Tag a message `+deleted` in notmuch (e.g. from `notmuch.el`).
 2. `mail-stage-deleted.scm` adds the Maildir `T` flag to its file(s) — isync maps
-   `T` ↔ IMAP `\Deleted`.  Files already in a Trash folder or already flagged
-   `T` are skipped.
+   `T` ↔ IMAP `\Deleted`.  Files already in a Trash folder, already flagged `T`,
+   or **under a read-only path** (see below) are skipped.
 3. On the next push, `mbsync` (with `Expunge Both` in `.mbsyncrc`) sets
    `\Deleted` and expunges.
 4. Gmail moves the message to Trash and it re-syncs into the local
@@ -156,10 +156,35 @@ POP/IMAP:
 Without this, expunging just *archives* (removes the INBOX label, leaving the
 message in All Mail) instead of trashing it.
 
-> Note for self-sent mail: a message you send yourself carries both the Inbox and
-> Sent labels, so it is visible in two synced folders.  `mail-stage-deleted.scm`
-> flags every copy (it tags by message), so the expunge removes it from both and
-> Gmail trashes it.
+### Read-only paths (per-account deletion)
+
+notmuch tags are per *logical message* (by Message-ID), but a deduplicated
+message can have physical files in **both** accounts — e.g. a list reply sent
+from `main` comes back through the list into `lists/INBOX`, so the one notmuch
+message has a `main/…` file and a `lists/INBOX/…` file.  Because
+`notmuch search --output=files` returns *all* files of a matching message (a
+`path:` predicate selects messages, not files), naively flagging every file
+would delete the lists copy too.
+
+The `read-only-paths` configuration field lists absolute Maildir prefixes whose
+physical copies must **never** be flagged for deletion.  It is serialized into
+the generated `~/.notmuch-config` as
+
+```ini
+[mailsync]
+read_only_paths=/home/trev/Mail/lists/
+```
+
+and `mail-stage-deleted.scm` reads it via `notmuch config get` — so the daemon
+*and* the manual `mail-sync` share one source of truth.  With `lists/` read-only,
+deleting a deduplicated message removes only the `main/` copy (and the message
+stays visible in the lists "forum" via the surviving `lists/INBOX` file); a
+message that exists *only* under a read-only path is never deleted from notmuch
+(handle those rare cases in Gmail's web UI).
+
+This is why `deleted` is **not** in `exclude_tags`: exclusion is per logical
+message, so excluding `deleted` would also hide the surviving lists copy.
+Instead, the `main` saved searches carry `not tag:deleted` to hide it per view.
 
 ---
 
@@ -193,7 +218,7 @@ Installed to the home profile's `bin/` (on `PATH`).  The two Guile scripts are
 | Command | Language | Purpose |
 |---------|----------|---------|
 | `mail-authinfo-password.scm MACHINE LOGIN` | Guile | Decrypt `~/.authinfo.gpg` and print the password for a `machine`/`login` pair. Handles both quoted and bare password fields. Used by the daemon's credential cache and by `.mbsyncrc`'s PassCmd fallback. |
-| `mail-stage-deleted.scm [--dry-run]` | Guile | Add the Maildir `T` flag to every `tag:deleted` message not already in Trash. `--dry-run` prints the intended renames without touching files. Run by the daemon as `tag-command`. |
+| `mail-stage-deleted.scm [--dry-run]` | Guile | Add the Maildir `T` flag to `tag:deleted` files, skipping copies already in Trash, already flagged, or under a `read_only_paths` prefix (read from `notmuch config`). `--dry-run` prints intended renames without touching files. Run by the daemon as `tag-command`. |
 | `mail-sync` | POSIX sh | One-shot manual sync: `notmuch new` → `mail-stage-deleted.scm` → `mbsync mail` → `notmuch new`, plus pruning of cached archive mboxes older than 90 days. Tagging is left to the daemon. |
 | `mail-fetch-gnu-archive LIST YYYY-MM` | POSIX sh | Download a GNU mailing-list mbox (e.g. `guix-devel`, `emacs-devel`, `bug-gnu-emacs`, `help-guix`), split it, de-duplicate against the notmuch DB by `Message-ID`, and import new messages into `~/Mail/archive/gnu/<list>/`. |
 
@@ -216,6 +241,7 @@ Installed to the home profile's `bin/` (on `PATH`).  The two Guile scripts are
 | `mbsyncrc-file` | `#f` | Override for `~/.mbsyncrc`. When `#f`, the file is **generated** from `accounts`/`credentials`. |
 | `notmuch-config-file` | `#f` | Override for `~/.notmuch-config`. When `#f`, the file is **generated** from `notmuch-settings`. |
 | `notmuch-settings` | `'()` | Alist serialized into the generated `~/.notmuch-config` (see below). |
+| `read-only-paths` | `'()` | Absolute Maildir prefixes whose copies are never staged for deletion (serialized to `[mailsync] read_only_paths`; see *Read-only paths*). |
 | `interval-seconds` | `600` | Daemon sleep between sync passes. |
 | `credentials` | `'()` | `(ENV-VAR COMMAND ARG …)` entries decrypted once and cached. |
 
@@ -250,13 +276,14 @@ keys (list-valued ones are joined with `;`):
 | `other-email` | `()` | `[user] other_email` |
 | `new-tags` | `("new" "unread")` | `[new] tags` |
 | `new-ignore` | `(".uidvalidity" ".mbsyncstate")` | `[new] ignore` |
-| `exclude-tags` | `("deleted" "spam")` | `[search] exclude_tags` |
+| `exclude-tags` | `("spam")` | `[search] exclude_tags` |
 | `synchronize-flags` | `#t` | `[maildir] synchronize_flags` |
 
 `synchronize_flags=true` keeps the standard Maildir flags (`F`/`R`/`S`/…) in sync
 with notmuch tags.  `exclude_tags` hides those tags from normal searches *except*
-queries that mention the tag explicitly — so `deleted` messages are invisible
-everywhere except a `tag:deleted` (trash) search.
+queries that mention the tag explicitly.  `deleted` is intentionally **not**
+excluded (see *Read-only paths*) — it is hidden per view via `not tag:deleted` in
+the `main` saved searches, so a dup deleted from `main` stays visible in lists.
 
 ---
 
@@ -317,8 +344,13 @@ herd restart notmuch-mbsync              # pick up the new runner; unlock once a
   with its `.uidvalidity` / `.mbsyncstate` — and let `mbsync` re-pull it fresh.
 
 - **A deleted message reappears briefly in a search** — it is staged but not yet
-  synced.  Ensure `deleted` is in `exclude_tags`, and add `not tag:deleted` to
-  volatile searches (e.g. the inbox view).
+  synced.  `deleted` is hidden per view rather than via `exclude_tags`, so add
+  `not tag:deleted` to volatile searches (the `main` inbox/unread views already
+  have it).
+
+- **Deleting a message removed the wrong account's copy** — check
+  `notmuch config get mailsync.read_only_paths`; the account you want to protect
+  must be listed (set via `read-only-paths`, see *Read-only paths*).
 
 - **Sync fails with an auth error after a long uptime** — should not happen (the
   daemon holds the password in memory).  If it does, `herd restart
@@ -340,6 +372,10 @@ herd restart notmuch-mbsync              # pick up the new runner; unlock once a
   `.authinfo.gpg` app password.
 - **Deletion** was migrated from a fragile local folder-move (which duplicated
   messages and left copies in All Mail) to the Gmail-native `\Deleted`-flag flow.
+- **Per-account deletion (`read-only-paths`)** was added because notmuch tags are
+  per logical message: a list reply sent from `main` is deduplicated with its
+  `lists/INBOX` copy, and flagging "the message" would delete both.  Marking the
+  lists maildir read-only scopes deletion to the `main` copy.
 - **The service** was converted from a Shepherd *timer* to a *daemon* specifically
   so the decrypted password can be held in memory across passes.
 - **The plugin / move-rule subsystem** was removed once deletion no longer needed
