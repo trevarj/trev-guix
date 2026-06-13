@@ -19,6 +19,7 @@
             notmuch-mbsync-configuration-interval-seconds
             notmuch-mbsync-configuration-credentials
             notmuch-mbsync-configuration-notmuch-settings
+            notmuch-mbsync-configuration-read-only-paths
             notmuch-mbsync-service-type))
 
 (define-record-type* <notmuch-mbsync-configuration>
@@ -61,6 +62,14 @@
   ;; (list), new-ignore (list), exclude-tags (list), synchronize-flags (bool).
   (notmuch-settings notmuch-mbsync-configuration-notmuch-settings
                     (default '()))
+
+  ;; Absolute Maildir path prefixes whose physical message copies the delete
+  ;; staging must never flag for deletion (e.g. a read-only "forum" account that
+  ;; shares deduplicated messages with another account).  Serialized into the
+  ;; generated ~/.notmuch-config as `[mailsync] read_only_paths' so both the
+  ;; daemon and the manual `mail-sync' read the same single source of truth.
+  (read-only-paths notmuch-mbsync-configuration-read-only-paths
+                   (default '()))
 
   ;; Daemon behaviour: how long to sleep between sync passes, and the
   ;; credentials to decrypt ONCE and cache in the environment so that mbsync
@@ -352,7 +361,20 @@
                                                           (if (get 'synchronize-flags
                                                                    #t) "true"
                                                               "false"))))
-                               "\n"))))
+                               "\n"
+                               ;; Custom section read by mail-stage-deleted (via
+                               ;; `notmuch config get'): physical copies under
+                               ;; these paths are never staged for deletion.
+                               (let ((read-only (notmuch-mbsync-configuration-read-only-paths
+                                                 config)))
+                                 (if (null? read-only) ""
+                                     (string-append "\n"
+                                                    (notmuch-config-section
+                                                     "mailsync"
+                                                     `(("read_only_paths" unquote
+                                                        (string-join read-only
+                                                                     ";"))))
+                                                    "\n")))))))
 
 (define (notmuch-mbsync-activate-config-files config)
   (let ((mbsyncrc-source (or (notmuch-mbsync-configuration-mbsyncrc-file
