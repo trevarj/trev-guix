@@ -109,7 +109,7 @@ auto-updates for reproducibility and bundles fzf and ripgrep in PATH.")
 (define-public codex
   (package
     (name "codex")
-    (version "0.137.0")
+    (version "0.139.0")
     (source
      (origin
        (method url-fetch)
@@ -117,7 +117,7 @@ auto-updates for reproducibility and bundles fzf and ripgrep in PATH.")
              "https://github.com/openai/codex/releases/download/rust-v"
              version "/codex-x86_64-unknown-linux-musl.tar.gz"))
        (sha256
-        (base32 "0cb9d4rv96j752vcy21b2h3irf6v2vdzc147pff7wncm7cqqhvnr"))))
+        (base32 "10803293vjwq42dwxs0ppc9d3kgawysjm4b230333j0xyh6zgsqj"))))
     (build-system binary-build-system)
     (propagated-inputs (list bubblewrap))
     (arguments
