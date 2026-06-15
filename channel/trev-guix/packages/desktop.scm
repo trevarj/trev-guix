@@ -67,16 +67,16 @@ usage with a clickable treemap.")
 (define-public gnome-topbar
   (package
     (name "gnome-topbar")
-    (version "1.0.0-5cf186e")
+    (version "1.0.0-3bcd4d8")
     (source
      (origin
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/trevarj/gnome-topbar.git")
-             (commit "5cf186e6c6a10fab60740eb92976c4a2520ad15a")))
+             (commit "3bcd4d8373aa1c800e9a4f37d04acb9a4027a540")))
        (file-name (git-file-name name version))
        (hash (content-hash
-              "194lklm12a3q1qmvqg38w22nyl5fksry3slxn7sfavkxxvjkl17j"))))
+              "0z1pbp0mhbbnk7h8s8sps2jabld0zvkd45v66fn54bxq4ydnx56q"))))
     (build-system cargo-build-system)
     (arguments
      (list
