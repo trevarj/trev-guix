@@ -7,7 +7,7 @@
   #:use-module (gnu packages emacs))
 
 (define-public emacs-next-next-pgtk
-  (let* ((commit "0a5e69eaef780e66a88bb6eca4e369b5e337245b")
+  (let* ((commit "d0b693e3e9bab30b558962991c55a2f07721fb3f")
          (version (git-version "31.0.50" "1" commit)))
     (package
       (inherit emacs-next-pgtk)
@@ -26,4 +26,4 @@
                (commit commit)))
          (file-name (git-file-name "emacs-next-next-pgtk" commit))
          (sha256
-          (base32 "1fb6yb0kid5vcx73phwp1ifxiifv9l3jbjr1ip7hxald2wmml5la")))))))
+          (base32 "0aa9jylmsbrdk2k4x7pd79bqjv91k68nxafbp74fwh3h56v5hvbs")))))))
