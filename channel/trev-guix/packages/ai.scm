@@ -19,7 +19,7 @@
 (define-public ollama
   (package
     (name "ollama")
-    (version "0.24.0")
+    (version "0.30.10")
     (source
      (origin
        (method url-fetch)
@@ -27,7 +27,7 @@
              "https://github.com/ollama/ollama/releases/download/v" version
              "/ollama-linux-amd64.tar.zst"))
        (sha256
-        (base32 "1nywgijy2limpclhjxl29vhndg9dc5l8ipqr8wxhsvm0dgbgii8m"))))
+        (base32 "1pbqs489r4gz295w94vz525wm09frcdqv3am95x4fn4dwll8yv84"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -58,7 +58,7 @@ as well as a library of pre-built models that can be easily used.")
 (define-public opencode
   (package
     (name "opencode")
-    (version "1.14.19")
+    (version "1.17.8")
     (source
      (origin
        (method url-fetch)
@@ -66,7 +66,7 @@ as well as a library of pre-built models that can be easily used.")
              "https://github.com/anomalyco/opencode/releases/download/v"
              version "/opencode-linux-x64.tar.gz"))
        (sha256
-        (base32 "0h0ljmkz26ab02is0yq8balw9x6229mkb8prdwmjxj0frqiigccc"))))
+        (base32 "0pqy5f33v4xz3c89r08j4r6dkkq4p2k7wxqlglmld4vh48lzrzqk"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -109,7 +109,7 @@ auto-updates for reproducibility and bundles fzf and ripgrep in PATH.")
 (define-public codex
   (package
     (name "codex")
-    (version "0.139.0")
+    (version "0.141.0")
     (source
      (origin
        (method url-fetch)
@@ -117,7 +117,7 @@ auto-updates for reproducibility and bundles fzf and ripgrep in PATH.")
              "https://github.com/openai/codex/releases/download/rust-v"
              version "/codex-x86_64-unknown-linux-musl.tar.gz"))
        (sha256
-        (base32 "10803293vjwq42dwxs0ppc9d3kgawysjm4b230333j0xyh6zgsqj"))))
+        (base32 "0zcmb0iha9x065xqdhkdq0rxv3n33fvvc8fn34hvhvmsl2gvzqpi"))))
     (build-system binary-build-system)
     (propagated-inputs (list bubblewrap))
     (arguments
@@ -137,7 +137,7 @@ automated coding assistance.")
 (define-public claude-code
   (package
     (name "claude-code")
-    (version "2.1.170")
+    (version "2.1.183")
     (source
      (origin
        (method url-fetch)
@@ -145,7 +145,7 @@ automated coding assistance.")
              "86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/"
              version "/linux-x64/claude"))
        (hash (content-hash
-              "17hz12vkjnkyjk8qs3jr8rwm11rpskbf7lvhfnr2li50fxr017l4"))))
+              "1kndm3q2dhrkyzkyzgn130pcpg8xh5j1zs2y5ksrsa95bff40fyz"))))
     (build-system binary-build-system)
     (arguments
      (list
