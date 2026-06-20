@@ -9,6 +9,7 @@
   #:use-module (gnu packages virtualization)
   #:use-module (guix build-system copy)
   #:use-module (guix download)
+  #:use-module (guix git-download)
   #:use-module (guix gexp)
   #:use-module (guix packages)
   #:use-module ((guix licenses)
@@ -185,3 +186,51 @@ exec ~a \"$@\"
 It can understand your codebase, edit files, run terminal commands, and
 handle entire workflows.  This package disables auto-updates.")
     (license (nonfree "https://code.claude.com/docs/en/legal-and-compliance"))))
+
+(define-public gac
+  (package
+    (name "gac")
+    (version "0.1.1")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/trevarj/guix-agent-container")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       ;; Hash of the v<version> git checkout (from the build's hash mismatch).
+       (sha256
+        (base32 "1i7z8jrkraf3fn3vi1khv9fw8bmfm1031rsz54zh87xwz088yfci"))))
+    (build-system copy-build-system)
+    (arguments
+     (list
+      #:install-plan
+      #~'(("gac" "bin/gac")
+          ("bin/" "share/gac/bin/")
+          ("manifest.scm" "share/gac/manifest.scm")
+          ("README.md" "share/doc/gac/README.md")
+          ("PLAN.md" "share/doc/gac/PLAN.md"))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'install 'patch-gac-shebang
+            (lambda* (#:key inputs outputs #:allow-other-keys)
+              ;; gac uses bash arrays + `local`, so pin its shebang to the
+              ;; store bash (no /usr/bin/env in a pure Guix profile).
+              (let* ((bash (search-input-file inputs "bin/bash"))
+                     (gac (string-append (assoc-ref outputs "out")
+                                         "/bin/gac")))
+                (substitute* gac
+                  (("^#!.*") (string-append "#!" bash "\n")))
+                (chmod gac #o755)))))))
+    (inputs (list bash-minimal))
+    (home-page "https://github.com/trevarj/guix-agent-container")
+    (synopsis "Run claude/codex in an isolated Guix container")
+    (description
+     "gac launches the Claude Code and Codex agents inside an isolated Guix
+container with a read-only home, masked secret directories, a read-only agent
+config with read-write state, and a host-side commit-only GPG signing oracle
+so the container never sees the gpg-agent socket or private keys.  The in-container
+@command{guix} surface is filtered to safe subcommands and @code{--nesting} lets
+per-project manifests work natively.  Run @command{gac claude}, @command{gac
+codex}, or @command{gac bash}.")
+    (license license:gpl3+)))
