@@ -28,7 +28,9 @@
                                                               "gnupg"
                                                               "hypr"
                                                               "wallpapers"
-                                                              "X"))
+                                                              "X"
+                                                              "mpd"
+                                                              "rmpc"))
                                                   (excluded '("\\.zshenv"
                                                               "\\.zshrc"
                                                               "\\.zprofile"))))
