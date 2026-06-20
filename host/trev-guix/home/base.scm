@@ -16,6 +16,7 @@
   #:use-module (trev-guix packages fonts)
   #:use-module (trev-guix packages guix)
   #:use-module (trev-guix packages mail)
+  #:use-module (trev-guix packages music)
   #:use-module (trev-guix packages networking)
   #:use-module (trev-guix services flatpak)
   #:use-module (trev-guix services fontconfig)
@@ -42,6 +43,7 @@
                      image-viewers
                      linux
                      mail
+                     mpd
                      package-management
                      rust-apps
                      shells
@@ -110,6 +112,7 @@
                    jq
                    kitty
                    mail-scripts
+                   mpd
                    mpv
                    msmtp
                    nautilus
@@ -121,12 +124,14 @@
                    pinentry-tty
                    pinentry-fuzzguy
                    ripgrep
+                   rmpc
                    stow
                    tlp
                    torsocks
                    unzip
                    wireguard-tools
                    xdg-utils
+                   yoink
                    yt-dlp
                    zsh
                    zsh-autopair
