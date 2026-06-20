@@ -94,6 +94,7 @@
                    fzf
                    fzf-tab
                    ;; fwupd-nonfree ; bringing in a lot of weird packages
+                   gac
                    git
                    (list git "send-email")
                    (list glib "bin")
