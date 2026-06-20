@@ -174,7 +174,7 @@
               ;; (dashboard? #t)
               ;; (bootstrap-peers
               ;; '("/dns4/guix-p2p.trevs.site/tcp/443/p2p/12D3KooWDnvPgCuPTPaMbnbLpXP7kCxmXc9F7agJPuAJWXGoDNPT"))))
-              
+
               ;; Enable SSH access
               (service openssh-service-type
                        (openssh-configuration (openssh openssh-sans-x)
@@ -214,7 +214,10 @@
 
               (service nym-vpn-service-type)
 
+              (service gvfs-service-type)
+
               (udev-rules-service 'pipewire-add-udev-rules pipewire)
+              (udev-rules-service 'mtp libmtp)
               (udev-rules-service 'upower-battery-threshold-udev-rules
                                   %upower-battery-threshold-udev-rule)
               (udev-hardware-service 'stinkpad-battery-charge-limit
