@@ -47,7 +47,7 @@ sources.")
 (define-public yoink
   (package
     (name "yoink")
-    (version "0.2.0")
+    (version "0.2.1")
     (source
      (origin
        (method git-fetch)
@@ -56,7 +56,7 @@ sources.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1wbd2vhhwbgjimf5wqa923difnbp017jbb8lhlqxkbcc35agbx4z"))))
+        (base32 "0ivjbx0d579nmzk355wwwjpaqki889hpl0f9rwgsf102w7m6w8lr"))))
     (build-system pyproject-build-system)
     ;; Only the pure unit tests run offline; the smoke tests need network, so
     ;; skip the suite at build time.
