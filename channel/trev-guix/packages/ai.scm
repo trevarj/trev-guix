@@ -190,7 +190,7 @@ handle entire workflows.  This package disables auto-updates.")
 (define-public gac
   (package
     (name "gac")
-    (version "0.1.3")
+    (version "0.1.7")
     (source
      (origin
        (method git-fetch)
@@ -200,7 +200,7 @@ handle entire workflows.  This package disables auto-updates.")
        (file-name (git-file-name name version))
        ;; Hash of the v<version> git checkout (from the build's hash mismatch).
        (sha256
-        (base32 "1c2937194v0aprqkbzkkn7s1f55vbapd6aysxh35c2lrxd8h34sw"))))
+        (base32 "0sb6bb60dy37j7y9kg663qz95hrmnl65rs65h2nypa0mr9pk5713"))))
     (build-system copy-build-system)
     (arguments
      (list
