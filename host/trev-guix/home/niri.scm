@@ -19,7 +19,8 @@
                                                   (directories (list
                                                                 %dotfiles-directory))
                                                   (layout 'stow)
-                                                  (packages '("zsh" "guix"
+                                                  (packages '("agents" "zsh"
+                                                              "guix"
                                                               "guixboy"
                                                               "niri"
                                                               "gnome-topbar"
