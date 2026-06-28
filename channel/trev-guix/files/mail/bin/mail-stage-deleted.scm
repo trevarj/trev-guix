@@ -32,14 +32,14 @@
 ;; from the generated ~/.notmuch-config ([mailsync] read_only_paths).  Empty
 ;; when unset -> every deleted copy is staged (the original behaviour).  Read
 ;; from notmuch config so the daemon and the manual `mail-sync' share one source.
-(define %read-only-paths
+(define (read-only-paths)
   (notmuch-lines "could not read notmuch config"
                  "config" "get" "mailsync.read_only_paths"))
 
-(define (read-only? file)
+(define (read-only? read-only-paths file)
   (any (lambda (prefix)
          (string-prefix? prefix file))
-       %read-only-paths))
+       read-only-paths))
 
 ;; Maildir info part (after ":2,"), or #f when the name has no info section.
 (define (maildir-flags file)
@@ -48,9 +48,9 @@
          (substring file
                     (+ m 3)))))
 
-(define (stage-file file dry-run?)
+(define (stage-file file dry-run? read-only-paths)
   (let ((flags (maildir-flags file)))
-    (unless (or (read-only? file)
+    (unless (or (read-only? read-only-paths file)
                 (string-contains file "/[Gmail]/Trash/")
                 (not flags)
                 (string-index flags #\T))
@@ -74,8 +74,9 @@
                      #t)
                     (_ (format (current-error-port)
                                "usage: mail-stage-deleted [--dry-run]~%")
-                       (exit 2)))))
+                       (exit 2))))
+        (read-only-paths (read-only-paths)))
     (for-each (lambda (file)
                 (when (file-exists? file)
-                  (stage-file file dry-run?)))
+                  (stage-file file dry-run? read-only-paths)))
               (deleted-files))))
