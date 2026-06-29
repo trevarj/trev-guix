@@ -1,0 +1,819 @@
+#!/usr/bin/env -S guix repl --
+!#
+
+(use-modules (ice-9 format)
+             (ice-9 match)
+             (ice-9 popen)
+             (ice-9 regex)
+             (ice-9 threads)
+             (ice-9 textual-ports)
+             (srfi srfi-1)
+             (srfi srfi-11)
+             (srfi srfi-9)
+             (srfi srfi-13)
+             (guix build utils)
+             (guix git-download)
+             (guix packages)
+             (guix utils))
+
+(setenv "GUILE_AUTO_COMPILE" "0")
+
+(define %report-lines '())
+(define %report-flushed? #f)
+(define %progress-enabled? (isatty? (current-error-port)))
+(define %progress-width 0)
+(define %progress-message #f)
+(define %spinner-frames '("|" "/" "-" "\\"))
+(define %spinner-index 0)
+
+(define (render-progress)
+  (when (and %progress-enabled? %progress-message)
+    (let* ((frame (list-ref %spinner-frames
+                            (modulo %spinner-index
+                                    (length %spinner-frames))))
+           (message (string-append frame " " %progress-message))
+           (padding (max 0 (- %progress-width (string-length message)))))
+      (format (current-error-port) "\r~a~a" message (make-string padding #\space))
+      (force-output (current-error-port))
+      (set! %progress-width (string-length message))
+      (set! %spinner-index (+ %spinner-index 1)))))
+
+(define (progress fmt . args)
+  (when %progress-enabled?
+    (set! %progress-message (apply format #f fmt args))
+    (render-progress)))
+
+(define (clear-progress)
+  (when (and %progress-enabled? (> %progress-width 0))
+    (format (current-error-port) "\r~a\r" (make-string %progress-width #\space))
+    (force-output (current-error-port))
+    (set! %progress-width 0))
+  (set! %progress-message #f))
+
+(define (record-line fmt . args)
+  (set! %report-lines
+        (cons (apply format #f fmt args) %report-lines)))
+
+(define (record-output output)
+  (for-each (lambda (line)
+              (unless (string-null? line)
+                (record-line "~a" line)))
+            (string-split output #\newline)))
+
+(define (flush-report)
+  (unless %report-flushed?
+    (clear-progress)
+    (for-each (lambda (line)
+                (display line)
+                (newline))
+              (reverse %report-lines))
+    (set! %report-flushed? #t)))
+
+(define (say fmt . args)
+  (apply record-line (string-append "==> " fmt) args))
+
+(define (warn fmt . args)
+  (apply format (current-error-port) (string-append "warning: " fmt "~%") args))
+
+(define (die fmt . args)
+  (flush-report)
+  (apply format (current-error-port) (string-append "error: " fmt "~%") args)
+  (exit 1))
+
+(define (usage)
+  (display
+   "usage: scripts/update-channel-packages [OPTIONS] [PACKAGE...]
+
+Update trev-guix package definitions using Guix refresh where possible.
+
+Options:
+  --dry-run        Report available updates without editing files.
+  --allow-dirty   Run even when channel package files already have changes.
+  --skip-validate Skip check-channel-packages validation after updates.
+  -h, --help      Show this help.
+
+With no PACKAGE arguments, update every package with a configured update rule.
+"))
+
+(define (capture* . args)
+  (define (capture/blocking)
+    (let* ((port (apply open-pipe* OPEN_READ args))
+           (output (get-string-all port))
+           (status (close-pipe port)))
+      (list output status)))
+  (if (and %progress-enabled? %progress-message)
+      (let ((result #f)
+            (error #f)
+            (done? #f))
+        (let ((thread
+               (call-with-new-thread
+                (lambda ()
+                  (catch #t
+                    (lambda ()
+                      (set! result (capture/blocking)))
+                    (lambda args
+                      (set! error args)))
+                  (set! done? #t)))))
+          (let loop ()
+            (unless done?
+              (render-progress)
+              (usleep 100000)
+              (loop)))
+          (join-thread thread)
+          (when error
+            (apply throw error))
+          (values (car result) (cadr result))))
+      (let ((result (capture/blocking)))
+        (values (car result) (cadr result)))))
+
+(define (shell-quote str)
+  (string-append "'"
+                 (string-join (string-split str #\') "'\\''")
+                 "'"))
+
+(define (capture/combined* . args)
+  (capture* "sh" "-c"
+            (string-append
+             (string-join (map shell-quote args) " ")
+             " 2>&1")))
+
+(define (run* . args)
+  (let ((status (apply system* args)))
+    (unless (zero? status)
+      (die "command failed with status ~a:~{ ~a~}" status args))))
+
+(define (need command)
+  (let-values (((ignored status) (capture* "sh" "-c"
+                                           (string-append "command -v " command))))
+    ignored
+    (unless (zero? status)
+      (die "missing required command: ~a" command))))
+
+(define (split-path value)
+  (filter (lambda (item) (not (string-null? item)))
+          (string-split (or value "") #\:)))
+
+(define (add-load-path! path)
+  (set! %load-path (cons path %load-path)))
+
+(define (repository-root)
+  (let* ((script (car (command-line)))
+         (script-dir (dirname script)))
+    (canonicalize-path (string-append script-dir "/.."))))
+
+(define-record-type <custom-package>
+  (custom-package name module variable file repo tag-prefix tag-suffix)
+  custom-package?
+  (name custom-package-name)
+  (module custom-package-module)
+  (variable custom-package-variable)
+  (file custom-package-file)
+  (repo custom-package-repo)
+  (tag-prefix custom-package-tag-prefix)
+  (tag-suffix custom-package-tag-suffix))
+
+(define-record-type <npm-url-package>
+  (npm-url-package name module variable file npm-name)
+  npm-url-package?
+  (name npm-url-package-name)
+  (module npm-url-package-module)
+  (variable npm-url-package-variable)
+  (file npm-url-package-file)
+  (npm-name npm-url-package-npm-name))
+
+(define-record-type <git-branch-package>
+  (git-branch-package name module variable file branch version-base
+                      cargo-lock-source cargo-lock-destination)
+  git-branch-package?
+  (name git-branch-package-name)
+  (module git-branch-package-module)
+  (variable git-branch-package-variable)
+  (file git-branch-package-file)
+  (branch git-branch-package-branch)
+  (version-base git-branch-package-version-base)
+  (cargo-lock-source git-branch-package-cargo-lock-source)
+  (cargo-lock-destination git-branch-package-cargo-lock-destination))
+
+(define native-packages
+  '("ollama"
+    "opencode"
+    "gac"
+    "python-ytmusicapi"
+    "yoink"
+    "byedpi"))
+
+(define custom-packages
+  (list
+   (custom-package "codex"
+                   '(trev-guix packages ai)
+                   'codex
+                   "channel/trev-guix/packages/ai.scm"
+                   "openai/codex"
+                   "rust-v"
+                   "")
+   (custom-package "nym-vpn"
+                   '(trev-guix packages networking)
+                   'nym-vpn
+                   "channel/trev-guix/packages/networking.scm"
+                   "nymtech/nym-vpn-client"
+                   "nym-vpn-core-v"
+                   "")
+   (custom-package "gnome-shell-extension-executor"
+                   '(trev-guix packages gnome-xyz-local)
+                   'gnome-shell-extension-executor
+                   "channel/trev-guix/packages/gnome-xyz-local.scm"
+                   "raujonas/executor"
+                   "v"
+                   "")))
+
+(define npm-url-packages
+  (list
+   (npm-url-package "claude-code"
+                    '(trev-guix packages ai)
+                    'claude-code
+                    "channel/trev-guix/packages/ai.scm"
+                    "@anthropic-ai/claude-code")))
+
+(define git-branch-packages
+  (list
+   (git-branch-package "emacs-next-next-pgtk"
+                       '(trev-guix packages emacs)
+                       'emacs-next-next-pgtk
+                       "channel/trev-guix/packages/emacs.scm"
+                       "master"
+                       #f
+                       #f
+                       #f)
+   (git-branch-package "emacs-wlshm"
+                       '(trev-guix packages emacs)
+                       'emacs-wlshm
+                       "channel/trev-guix/packages/emacs.scm"
+                       "wlshm-backend"
+                       #f
+                       "rust/wlshm-backend/Cargo.lock"
+                       "channel/trev-guix/files/emacs-wlshm-Cargo.lock")
+   (git-branch-package "spacesniffer1000"
+                       '(trev-guix packages desktop)
+                       'spacesniffer1000
+                       "channel/trev-guix/packages/desktop.scm"
+                       "main"
+                       "0.1.0"
+                       "Cargo.lock"
+                       "channel/trev-guix/files/spacesniffer1000-Cargo.lock")
+   (git-branch-package "gnome-topbar"
+                       '(trev-guix packages desktop)
+                       'gnome-topbar
+                       "channel/trev-guix/packages/desktop.scm"
+                       "master"
+                       "1.0.0"
+                       "Cargo.lock"
+                       "channel/trev-guix/files/gnome-topbar-Cargo.lock")
+   (git-branch-package "guixboy"
+                       '(trev-guix packages guix)
+                       'guixboy
+                       "channel/trev-guix/packages/guix.scm"
+                       "master"
+                       "0.1.0"
+                       #f
+                       #f)))
+
+(define report-only-packages
+  '(("font-iosevka-jbm" . "report-only: local-file package")
+    ("font-cryptofont" . "report-only: local-file package")
+    ("mail-scripts" . "report-only: local scripts package")
+    ("pinentry-fuzzguy" . "report-only: local-file package")))
+
+(define (custom-package-names)
+  (map custom-package-name custom-packages))
+
+(define (npm-url-package-names)
+  (map npm-url-package-name npm-url-packages))
+
+(define (git-branch-package-names)
+  (map git-branch-package-name git-branch-packages))
+
+(define (report-only-package-names)
+  (map car report-only-packages))
+
+(define (parse-arguments args)
+  (let loop ((args args)
+             (dry-run? #f)
+             (allow-dirty? #f)
+             (skip-validate? #f)
+             (packages '()))
+    (match args
+      (()
+       (values dry-run? allow-dirty? skip-validate? (reverse packages)))
+      (("--dry-run" . rest)
+       (loop rest #t allow-dirty? skip-validate? packages))
+      (("--allow-dirty" . rest)
+       (loop rest dry-run? #t skip-validate? packages))
+      (("--skip-validate" . rest)
+       (loop rest dry-run? allow-dirty? #t packages))
+      (((or "-h" "--help") . _)
+       (usage)
+       (exit 0))
+      (("--" . rest)
+       (values dry-run? allow-dirty? skip-validate?
+               (append (reverse packages) rest)))
+      (((? (lambda (arg) (string-prefix? "-" arg)) option) . _)
+       (die "unknown option: ~a" option))
+      ((package . rest)
+       (loop rest dry-run? allow-dirty? skip-validate?
+             (cons package packages))))))
+
+(define (package-selected? requested name)
+  (or (null? requested) (member name requested)))
+
+(define (validate-requested-packages requested)
+  (let ((known (append native-packages
+                       (custom-package-names)
+                       (npm-url-package-names)
+                       (git-branch-package-names)
+                       (report-only-package-names))))
+    (for-each
+     (lambda (package)
+       (unless (member package known)
+         (die "unknown or unsupported package: ~a" package)))
+     requested)))
+
+(define (check-clean-package-files)
+  (let-values (((status-output status)
+                (capture* "git" "status" "--porcelain" "--"
+                          "channel/trev-guix/packages/*.scm"
+                          "channel/trev-guix/files/*-Cargo.lock")))
+    (unless (zero? status)
+      (die "could not inspect git status"))
+    (unless (string-null? status-output)
+      (display status-output (current-error-port))
+      (die "channel package files or Cargo locks already have changes; rerun with --allow-dirty to update anyway"))))
+
+(define (guix-load-path-arguments extra-load-paths)
+  (append '("-L" "channel")
+          (append-map (lambda (path) (list "-L" path))
+                      extra-load-paths)))
+
+(define (call-with-quiet-warnings thunk)
+  (call-with-output-file "/dev/null"
+    (lambda (port)
+      (parameterize ((current-warning-port port))
+        (thunk)))))
+
+(define (lookup-custom-package spec)
+  (call-with-quiet-warnings
+   (lambda ()
+     (module-ref (resolve-interface (custom-package-module spec))
+                 (custom-package-variable spec)))))
+
+(define (lookup-npm-url-package spec)
+  (call-with-quiet-warnings
+   (lambda ()
+     (module-ref (resolve-interface (npm-url-package-module spec))
+                 (npm-url-package-variable spec)))))
+
+(define (lookup-git-branch-package spec)
+  (call-with-quiet-warnings
+   (lambda ()
+     (module-ref (resolve-interface (git-branch-package-module spec))
+                 (git-branch-package-variable spec)))))
+
+(define (origin-uri-string origin)
+  (match (origin-uri origin)
+    ((uri . _) uri)
+    (uri uri)))
+
+(define (origin-git-reference origin package)
+  (let ((uri (origin-uri origin)))
+    (unless (git-reference? uri)
+      (die "~a: expected git-fetch source" package))
+    uri))
+
+(define (regexp-submatches pattern text group)
+  (let ((rx (make-regexp pattern)))
+    (let loop ((start 0) (matches '()))
+      (let ((match (regexp-exec rx text start)))
+        (if match
+            (loop (match:end match)
+                  (cons (match:substring match group) matches))
+            (reverse matches))))))
+
+(define (github-release-tags repo)
+  (progress "Checking GitHub releases for ~a..." repo)
+  (let-values (((json status)
+                (capture* "wget" "-qO-" "--timeout=30"
+                          "--header=Accept: application/vnd.github+json"
+                          (string-append "https://api.github.com/repos/"
+                                         repo "/releases?per_page=50"))))
+    (unless (zero? status)
+      (die "could not read GitHub releases for ~a" repo))
+    (regexp-submatches "\"tag_name\"[ \t\r\n]*:[ \t\r\n]*\"([^\"]+)\""
+                       json
+                       1)))
+
+(define (latest-custom-version spec)
+  (let* ((prefix (custom-package-tag-prefix spec))
+         (suffix (custom-package-tag-suffix spec))
+         (tags (github-release-tags (custom-package-repo spec)))
+         (matching-tags
+          (filter (lambda (tag)
+                    (and (string-prefix? prefix tag)
+                         (string-suffix? suffix tag)))
+                  tags)))
+    (match matching-tags
+     (()
+      (die "~a: no recent GitHub release tag matched prefix '~a'"
+            (custom-package-name spec) prefix))
+      ((tag . _)
+       (let* ((without-prefix (string-drop tag (string-length prefix)))
+              (version (if (string-null? suffix)
+                           without-prefix
+                           (string-drop-right without-prefix
+                                              (string-length suffix)))))
+         (when (string-null? version)
+           (die "~a: latest matching tag '~a' produced an empty version"
+                (custom-package-name spec) tag))
+         version)))))
+
+(define (npm-latest-version npm-name)
+  (progress "Checking npm metadata for ~a..." npm-name)
+  (let-values (((json status)
+                (capture* "wget" "-qO-" "--timeout=30"
+                          (string-append "https://registry.npmjs.org/"
+                                         npm-name "/latest"))))
+    (unless (zero? status)
+      (die "could not read npm metadata for ~a" npm-name))
+    (let* ((rx (make-regexp "\"version\"[ \t\r\n]*:[ \t\r\n]*\"([^\"]+)\""))
+           (match (regexp-exec rx json)))
+      (unless match
+        (die "could not find latest npm version for ~a" npm-name))
+      (match:substring match 1))))
+
+(define (latest-git-commit url branch package)
+  (progress "Checking ~a branch ~a..." package branch)
+  (let-values (((output status)
+                (capture* "git" "ls-remote" url
+                          (string-append "refs/heads/" branch))))
+    (unless (zero? status)
+      (display output (current-error-port))
+      (die "~a: could not query branch ~a" package branch))
+    (match (string-tokenize output)
+      ((commit _ ...)
+       commit)
+      (_
+       (die "~a: branch ~a was not found" package branch)))))
+
+(define (short-commit commit)
+  (substring commit 0 (min 7 (string-length commit))))
+
+(define (replace-substrings str old new)
+  (let loop ((start 0) (pieces '()))
+    (match (string-contains str old start)
+      (#f
+       (string-concatenate-reverse (cons (substring str start) pieces)))
+      (index
+       (loop (+ index (string-length old))
+             (cons* new (substring str start index) pieces))))))
+
+(define (hash-url package url)
+  (say "~a: hashing ~a" package url)
+  (progress "Hashing ~a source..." package)
+  (let-values (((output status) (capture* "guix" "download" url)))
+    (unless (zero? status)
+      (display output (current-error-port))
+      (die "~a: guix download failed for ~a" package url))
+    (match (filter (lambda (line) (not (string-null? line)))
+                   (string-split output #\newline))
+      (() (die "~a: guix download did not print a hash" package))
+      (lines (last lines)))))
+
+(define (make-temporary-directory)
+  (let-values (((output status)
+                (capture* "mktemp" "-d" "-t" "trev-guix-source.XXXXXX")))
+    (unless (zero? status)
+      (die "could not create temporary directory"))
+    (string-trim-right output #\newline)))
+
+(define (with-git-checkout url commit proc)
+  (let ((directory (make-temporary-directory)))
+    (dynamic-wind
+      (lambda () #t)
+      (lambda ()
+        (progress "Fetching source checkout...")
+        (run* "git" "init" "-q" directory)
+        (run* "git" "-C" directory "remote" "add" "origin" url)
+        (run* "git" "-C" directory "fetch" "-q" "--depth" "1"
+              "origin" commit)
+        (run* "git" "-C" directory "checkout" "-q" "FETCH_HEAD")
+        (proc directory))
+      (lambda ()
+        (when (file-exists? directory)
+          (delete-file-recursively directory))))))
+
+(define (hash-git-checkout package directory)
+  (say "~a: hashing git checkout" package)
+  (progress "Hashing ~a checkout..." package)
+  (let-values (((output status)
+                (capture* "guix" "hash" "-x" "--serializer=nar"
+                          directory)))
+    (unless (zero? status)
+      (display output (current-error-port))
+      (die "~a: guix hash failed" package))
+    (match (filter (lambda (line) (not (string-null? line)))
+                   (string-split output #\newline))
+      (() (die "~a: guix hash did not print a hash" package))
+      (lines (last lines)))))
+
+(define (package-form-span text package)
+  (let* ((needle (string-append "(define-public " package))
+         (start (string-contains text needle)))
+    (unless start
+      (die "~a: could not find package definition" package))
+    (let loop ((index start)
+               (depth 0)
+               (in-string? #f)
+               (escape? #f)
+               (in-comment? #f))
+      (when (>= index (string-length text))
+        (die "~a: package definition did not close" package))
+      (let ((char (string-ref text index)))
+        (cond
+         (in-string?
+          (loop (+ index 1)
+                depth
+                (cond
+                 (escape? #t)
+                 ((char=? char #\") #f)
+                 (else #t))
+                (and (not escape?) (char=? char #\\))
+                #f))
+         (in-comment?
+          (loop (+ index 1) depth #f #f (not (char=? char #\newline))))
+         ((char=? char #\")
+          (loop (+ index 1) depth #t #f #f))
+         ((char=? char #\;)
+          (loop (+ index 1) depth #f #f #t))
+         ((char=? char #\()
+          (loop (+ index 1) (+ depth 1) #f #f #f))
+         ((char=? char #\))
+          (let ((new-depth (- depth 1)))
+            (if (zero? new-depth)
+                (values start (+ index 1))
+                (loop (+ index 1) new-depth #f #f #f))))
+         (else
+          (loop (+ index 1) depth #f #f #f)))))))
+
+(define (regexp-replace-first pattern replacement text package field)
+  (let* ((rx (make-regexp pattern))
+         (match (regexp-exec rx text)))
+    (unless match
+      (die "~a: could not find ~a field" package field))
+    (string-append (substring text 0 (match:start match))
+                   replacement
+                   (substring text (match:end match)))))
+
+(define (regexp-replace-hash hash text package)
+  (let* ((rx (make-regexp "\\((base32|content-hash)[ \t\r\n]+\"[^\"]+\"\\)"))
+         (match (regexp-exec rx text)))
+    (unless match
+      (die "~a: could not find source hash field" package))
+    (string-append (substring text 0 (match:start match))
+                   "("
+                   (match:substring match 1)
+                   " \""
+                   hash
+                   "\")"
+                   (substring text (match:end match)))))
+
+(define (rewrite-package-file file package version commit hash)
+  (let* ((text (call-with-input-file file get-string-all)))
+    (let-values (((start end) (package-form-span text package)))
+      (let* ((before (substring text 0 start))
+             (form (substring text start end))
+             (after (substring text end))
+             (with-version
+              (if version
+                  (regexp-replace-first "\\(version[ \t\r\n]+\"[^\"]+\"\\)"
+                                        (string-append "(version \"" version "\")")
+                                        form package "version")
+                  form))
+             (with-commit
+              (if commit
+                  (regexp-replace-first "\"[0-9a-f]{40}\""
+                                        (string-append "\"" commit "\"")
+                                        with-version package "commit")
+                  with-version))
+             (with-hash
+              (if hash
+                  (regexp-replace-hash hash with-commit package)
+                  with-commit)))
+        (call-with-output-file file
+          (lambda (port)
+            (display before port)
+            (display with-hash port)
+            (display after port)))))))
+
+(define (update-custom-package spec dry-run?)
+  (let* ((package (lookup-custom-package spec))
+         (name (custom-package-name spec))
+         (current (package-version package))
+         (source (package-source package))
+         (uri (origin-uri-string source))
+         (latest (latest-custom-version spec)))
+    (cond
+     ((not (version>? latest current))
+      (record-line "current: ~a ~a" name current))
+     (dry-run?
+      (record-line "update:  ~a ~a -> ~a" name current latest))
+     ((git-reference? (origin-uri source))
+      (die "~a: custom updater only handles url-fetch origins" name))
+     (else
+      (let* ((latest-uri (replace-substrings uri current latest))
+             (hash (hash-url name latest-uri)))
+        (record-line "update:  ~a ~a -> ~a" name current latest)
+        (rewrite-package-file (custom-package-file spec)
+                              name
+                              latest
+                              #f
+                              hash))))))
+
+(define (update-npm-url-package spec dry-run?)
+  (let* ((package (lookup-npm-url-package spec))
+         (name (npm-url-package-name spec))
+         (current (package-version package))
+         (source (package-source package))
+         (uri (origin-uri-string source))
+         (latest (npm-latest-version (npm-url-package-npm-name spec))))
+    (cond
+     ((not (version>? latest current))
+      (record-line "current: ~a ~a" name current))
+     (dry-run?
+      (record-line "update:  ~a ~a -> ~a" name current latest))
+     ((git-reference? (origin-uri source))
+      (die "~a: npm URL updater only handles url-fetch origins" name))
+     (else
+      (let* ((latest-uri (replace-substrings uri current latest))
+             (hash (hash-url name latest-uri)))
+        (record-line "update:  ~a ~a -> ~a" name current latest)
+        (rewrite-package-file (npm-url-package-file spec)
+                              name
+                              latest
+                              #f
+                              hash))))))
+
+(define (copy-cargo-lock-if-needed spec checkout)
+  (let ((source (git-branch-package-cargo-lock-source spec))
+        (destination (git-branch-package-cargo-lock-destination spec)))
+    (when source
+      (let ((source-path (string-append checkout "/" source)))
+        (unless (file-exists? source-path)
+          (die "~a: expected Cargo.lock not found at ~a"
+               (git-branch-package-name spec) source))
+        (copy-file source-path destination)))))
+
+(define (branch-version spec commit)
+  (match (git-branch-package-version-base spec)
+    (#f #f)
+    (base (string-append base "-" (short-commit commit)))))
+
+(define (update-git-branch-package spec dry-run?)
+  (let* ((package (lookup-git-branch-package spec))
+         (name (git-branch-package-name spec))
+         (source (package-source package))
+         (git-reference (origin-git-reference source name))
+         (url (git-reference-url git-reference))
+         (current (git-reference-commit git-reference))
+         (latest (latest-git-commit url
+                                    (git-branch-package-branch spec)
+                                    name)))
+    (cond
+     ((string=? current latest)
+      (record-line "current: ~a ~a" name (short-commit current)))
+     (dry-run?
+      (record-line "update:  ~a ~a -> ~a"
+                   name (short-commit current) (short-commit latest)))
+     (else
+      (with-git-checkout
+       url latest
+       (lambda (checkout)
+         (let ((hash (hash-git-checkout name checkout))
+               (version (branch-version spec latest)))
+           (copy-cargo-lock-if-needed spec checkout)
+           (record-line "update:  ~a ~a -> ~a"
+                        name (short-commit current) (short-commit latest))
+           (rewrite-package-file (git-branch-package-file spec)
+                                 name
+                                 version
+                                 latest
+                                 hash))))))))
+
+(define (run-native-refresh packages dry-run? load-path-args)
+  (unless (null? packages)
+    (let* ((refresh-args (append load-path-args
+                                 (if dry-run? '() '("-u"))
+                                 packages))
+           (command (cons* "guix" "refresh" refresh-args)))
+      (if dry-run?
+          (say "Checking Guix-supported package updates")
+          (say "Updating Guix-supported packages"))
+      (record-line "+~{ ~a~}" command)
+      (progress "Running guix refresh for ~a package(s)..." (length packages))
+      (let-values (((output status) (apply capture/combined* command)))
+        (record-output output)
+        (unless (zero? status)
+          (die "guix refresh failed with status ~a" status))))))
+
+(define (show-report-only packages)
+  (unless (null? packages)
+    (say "Skipped report-only packages")
+    (for-each
+     (lambda (package)
+       (record-line "skip:    ~a (~a)"
+                    package
+                    (assoc-ref report-only-packages package)))
+     packages)))
+
+(define (show-diff-summary)
+  (say "Package diff summary")
+  (let ((status (system* "git" "diff" "--quiet" "--"
+                         "channel/trev-guix/packages"
+                         "channel/trev-guix/files/*-Cargo.lock")))
+    (if (zero? status)
+        (record-line "No package changes.")
+        (let-values (((output diff-status)
+                      (capture* "git" "diff" "--stat" "--"
+                                "channel/trev-guix/packages"
+                                "channel/trev-guix/files/*-Cargo.lock")))
+          (record-output output)
+          (unless (zero? diff-status)
+            (die "git diff --stat failed with status ~a" diff-status))))))
+
+(define (main)
+  (let-values (((dry-run? allow-dirty? skip-validate? requested)
+                (parse-arguments (cdr (command-line)))))
+    (validate-requested-packages requested)
+    (for-each need '("git" "guix" "sh" "wget"))
+    (let* ((root (repository-root))
+           (extra-load-paths (split-path (getenv "GUIX_EXTRA_LOAD_PATHS")))
+           (load-path-args (guix-load-path-arguments extra-load-paths)))
+      (chdir root)
+      (add-load-path! (string-append root "/channel"))
+      (for-each add-load-path! extra-load-paths)
+      (unless (or dry-run? allow-dirty?)
+        (check-clean-package-files))
+      (let ((selected-native
+             (filter (lambda (name) (package-selected? requested name))
+                     native-packages))
+            (selected-custom
+             (filter (lambda (spec)
+                       (package-selected? requested
+                                          (custom-package-name spec)))
+                     custom-packages))
+            (selected-npm-url
+             (filter (lambda (spec)
+                       (package-selected? requested
+                                          (npm-url-package-name spec)))
+                     npm-url-packages))
+            (selected-git-branch
+             (filter (lambda (spec)
+                       (package-selected? requested
+                                          (git-branch-package-name spec)))
+                     git-branch-packages))
+            (selected-report-only
+             (filter (lambda (name) (package-selected? requested name))
+                     (report-only-package-names))))
+        (if (null? selected-native)
+            (say "No Guix-supported packages selected")
+            (run-native-refresh selected-native dry-run? load-path-args))
+        (unless (null? selected-custom)
+          (say "Checking custom release-asset packages")
+          (for-each (lambda (spec)
+                      (update-custom-package spec dry-run?))
+                    selected-custom))
+        (unless (null? selected-npm-url)
+          (say "Checking npm-versioned URL packages")
+          (for-each (lambda (spec)
+                      (update-npm-url-package spec dry-run?))
+                    selected-npm-url))
+        (unless (null? selected-git-branch)
+          (say "Checking git branch snapshot packages")
+          (for-each (lambda (spec)
+                      (update-git-branch-package spec dry-run?))
+                    selected-git-branch))
+        (show-report-only selected-report-only)
+        (if dry-run?
+            (begin
+              (say "Dry run complete; no files edited")
+              (flush-report))
+            (begin
+              (show-diff-summary)
+              (if skip-validate?
+                  (say "Validation skipped")
+                  (begin
+                    (say "Validating updated package definitions")
+                    (clear-progress)
+                    (run* "scripts/check-channel-packages" "--fast")
+                    (run* "scripts/check-channel-packages" "--source")))
+              (say "Done. Review the diff, then make your signed channel commit locally.")
+              (flush-report)))))))
+
+(main)
