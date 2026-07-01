@@ -45,40 +45,43 @@ sources.")
     (license license:expat)))
 
 (define-public yoink
-  (package
-    (name "yoink")
-    (version "0.2.3")
-    (source
-     (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://github.com/trevarj/yoink")
-             (commit (string-append "v" version))))
-       (file-name (git-file-name name version))
-       (sha256
-        (base32 "0h2iy8y7az0y6g07ni7ff5sl0dj43k3bqqnw8q75dw5vh23yghpy"))))
-    (build-system pyproject-build-system)
-    ;; Only the pure unit tests run offline; the smoke tests need network, so
-    ;; skip the suite at build time.
-    (arguments (list #:tests? #f))
-    (native-inputs (list python-hatchling))
-    (propagated-inputs
-     (list python-textual
-           python-musicbrainzngs
-           python-mutagen
-           python-rapidfuzz
-           python-ytmusicapi
-           python-platformdirs
-           python-httpx
-           python-requests
-           yt-dlp
-           beets
-           ffmpeg))
-    (home-page "https://github.com/trevarj/yoink")
-    (synopsis "TUI music browser that downloads full albums from YouTube Music")
-    (description
-     "yoink is a terminal music browser: browse MusicBrainz, queue full albums,
+  (let* ((commit "9d7492474fb42191728a2e68188bac1ad677ac38")
+         (revision "0")
+         (version (git-version "0.2.3" revision commit)))
+    (package
+      (name "yoink")
+      (version version)
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/trevarj/yoink")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "0v9n4jzr577hjk28ghi5q08iw97g6jf97qapqdqjc9rzckprb6gn"))))
+      (build-system pyproject-build-system)
+      ;; Only the pure unit tests run offline; the smoke tests need network, so
+      ;; skip the suite at build time.
+      (arguments (list #:tests? #f))
+      (native-inputs (list python-hatchling))
+      (propagated-inputs
+       (list python-textual
+             python-musicbrainzngs
+             python-mutagen
+             python-rapidfuzz
+             python-ytmusicapi
+             python-platformdirs
+             python-httpx
+             python-requests
+             yt-dlp
+             beets
+             ffmpeg))
+      (home-page "https://github.com/trevarj/yoink")
+      (synopsis "TUI music browser that downloads full albums from YouTube Music")
+      (description
+       "yoink is a terminal music browser: browse MusicBrainz, queue full albums,
 and a background worker crawls YouTube Music and downloads each track with
 yt-dlp, tags it, and writes a clean @code{Artist/Album/NN Title.opus} library
 tree.  Output is plain files; syncing elsewhere is left to the user.")
-    (license license:expat)))
+      (license license:expat))))
