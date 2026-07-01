@@ -78,8 +78,10 @@
                    distrobox
                    ddcutil
                    ;; easyeffects
-                   emacs-next-next-pgtk
-                   (list emacs-next-next-pgtk "doc")
+                   ;; emacs-next-next-pgtk
+                   ;; (list emacs-next-next-pgtk "doc")
+                   emacs-wlshm
+                   (list emacs-wlshm "doc")
                    emacs-guix
                    emacs-vterm
                    eza
@@ -130,6 +132,7 @@
                    torsocks
                    unzip
                    wireguard-tools
+                   wl-clipboard
                    xdg-utils
                    yoink
                    yt-dlp
