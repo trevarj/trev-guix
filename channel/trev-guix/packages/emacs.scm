@@ -45,7 +45,7 @@
   ;; --with-wlshm flag, and the backend's extra build inputs.  The build also
   ;; compiles a small Rust staticlib via cargo, so we vendor its crate
   ;; dependencies (from Cargo.lock) and build cargo offline.
-  (let* ((commit "a2fc1e37249497ffb182e4ab3dc8e81afba180ce")
+  (let* ((commit "9c56fc8595eeb3a2474beae744227b5d5c96d206")
          (version (git-version "31.0.50" "0" commit)))
     (package
       (inherit emacs-next)
@@ -60,7 +60,7 @@
                (commit commit)))
          (file-name (git-file-name "emacs-wlshm" commit))
          (sha256
-          (base32 "0mmnjfc3z8kc885ham0wmk74njsvrpl6haq88jrz0wb06n4zy2x6"))))
+          (base32 "03bdk2amk6jfpmbidvxccmbp32cs4w6gkqi6grahzfjr0y7vs0ym"))))
       (arguments
        (substitute-keyword-arguments (package-arguments emacs-next)
          ((#:tests? tests? #f)
