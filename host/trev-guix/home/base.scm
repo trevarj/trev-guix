@@ -112,6 +112,7 @@
                    imv
                    isync
                    jq
+                   kg
                    kitty
                    mail-scripts
                    mpd

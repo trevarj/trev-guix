@@ -6,12 +6,60 @@
   #:use-module (guix utils)
   #:use-module (guix build-system gnu)
   #:use-module (guix import crate)
+  #:use-module ((guix licenses) #:prefix license:)
   #:use-module (gnu packages)
+  #:use-module (gnu packages bash)
   #:use-module (gnu packages emacs)
   #:use-module (gnu packages freedesktop)
   #:use-module (gnu packages rust)
   #:use-module (gnu packages rust-apps)
   #:use-module (gnu packages xdisorg))
+
+(define-public kg
+  (let* ((commit "f8ef750ace4b79c26838a79461298a0ac3934696")
+         (version (git-version "1.1.0" "0" commit)))
+    (package
+      (name "kg")
+      (version version)
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/troglobit/kg")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "1418a81mla65ljriaqzr4kz496vr91kjgh9pwx1szidh4s5wgr8q"))))
+      (build-system gnu-build-system)
+      (arguments
+       (list
+        #:make-flags
+        #~(list (string-append "CC=" #$(cc-for-target))
+                (string-append "prefix=" #$output))
+        #:test-target "check"
+        #:phases
+        #~(modify-phases %standard-phases
+            (delete 'configure)
+            (add-after 'unpack 'patch-shell-path
+              (lambda* (#:key inputs #:allow-other-keys)
+                (substitute* "src/shell.c"
+                  (("\"/bin/sh\"")
+                   (string-append "\""
+                                  (search-input-file inputs "/bin/sh")
+                                  "\"")))))
+            (add-after 'unpack 'do-not-strip-during-install
+              (lambda _
+                (substitute* "Makefile"
+                  (("install -m 755 -s")
+                   "install -m 755")))))))
+      (inputs (list bash-minimal))
+      (home-page "https://github.com/troglobit/kg")
+      (synopsis "Lightweight UTF-8 terminal text editor with Emacs keybindings")
+      (description
+       "kg is a small terminal text editor with pure Emacs-style keybindings,
+syntax highlighting, multiple buffers, split windows, incremental search, undo,
+and VT100 terminal support without a curses dependency.")
+      (license license:bsd-2))))
 
 (define-public emacs-next-next-pgtk
   (let* ((commit "d0b693e3e9bab30b558962991c55a2f07721fb3f")
