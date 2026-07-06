@@ -93,7 +93,7 @@ and VT100 terminal support without a curses dependency.")
   ;; --with-wlshm flag, and the backend's extra build inputs.  The build also
   ;; compiles a small Rust staticlib via cargo, so we vendor its crate
   ;; dependencies (from Cargo.lock) and build cargo offline.
-  (let* ((commit "9c56fc8595eeb3a2474beae744227b5d5c96d206")
+  (let* ((commit "37f031c253dae46503c816d7caeacbd62f271130")
          (version (git-version "31.0.50" "0" commit)))
     (package
       (inherit emacs-next)
@@ -108,7 +108,7 @@ and VT100 terminal support without a curses dependency.")
                (commit commit)))
          (file-name (git-file-name "emacs-wlshm" commit))
          (sha256
-          (base32 "03bdk2amk6jfpmbidvxccmbp32cs4w6gkqi6grahzfjr0y7vs0ym"))))
+          (base32 "0wi5ra16a2fh6qyfq6r527a75c07v0wn9dk3882svvlsvj01ivg7"))))
       (arguments
        (substitute-keyword-arguments (package-arguments emacs-next)
          ((#:tests? tests? #f)
