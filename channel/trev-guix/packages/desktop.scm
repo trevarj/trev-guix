@@ -40,16 +40,15 @@
 (define-public spacesniffer1000
   (package
     (name "spacesniffer1000")
-    (version "0.1.0-9fc2136")
+    (version "0.1.0-498c3d2")
     (source
      (origin
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/trevarj/spacesniffer1000.git")
-             (commit "9fc21368f6693936998855cfbd2708ab6fd31ae9")))
+             (commit "498c3d2805ce6dc09a9b5478730439ae401e4532")))
        (file-name (git-file-name name version))
-       (hash (content-hash
-              "1pzlqm9wc4papm1iqv2zqrawz2yfsqb62cgm9xkrcxs73afmapbs"))))
+       (hash (content-hash "0fq6y8m37ba4ldmhx5glwd66xvasdajclplc6b32l8ya0b69fmri"))))
     (build-system cargo-build-system)
     (arguments
      (list

@@ -9,7 +9,7 @@
 (define-public gnome-shell-extension-executor
   (package
     (name "gnome-shell-extension-executor")
-    (version "26")
+    (version "30")
     (source
      (origin
        (method url-fetch)
@@ -17,7 +17,7 @@
              "https://github.com/raujonas/executor/releases/download/"
              (string-append "v" version) "/executor@raujonas.github.io"))
        (sha256
-        (base32 "1hydn1n141318b5w8sr62mlyywafkh4lgir05nrcffzl7hhv3ck2"))
+        (base32 "072m7302agm0v9kw4vsymrj57yvn7c7fxy0cwhh156ih6md5r18a"))
        (file-name (string-append name "-" version ".zip"))))
     (build-system copy-build-system)
     (native-inputs (list unzip))

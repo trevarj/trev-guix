@@ -14,7 +14,7 @@
 (define-public nym-vpn
   (package
     (name "nym-vpn")
-    (version "1.29.2")
+    (version "2026.10.0")
     (source
      (origin
        (method url-fetch)
@@ -26,7 +26,7 @@
              version
              "_linux_x86_64.tar.gz"))
        (sha256
-        (base32 "0d8v4390kd4aj7776vyv22sj97y5a63fk02m87j7pv64ihfqrr7r"))))
+        (base32 "16vc2g91zb8kpvisny85ag6xp99v0xiabhmn8dy64jr2vhrbi6lk"))))
     (build-system binary-build-system)
     (arguments
      (list

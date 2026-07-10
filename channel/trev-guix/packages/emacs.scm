@@ -62,7 +62,7 @@ and VT100 terminal support without a curses dependency.")
       (license license:bsd-2))))
 
 (define-public emacs-next-next-pgtk
-  (let* ((commit "d0b693e3e9bab30b558962991c55a2f07721fb3f")
+  (let* ((commit "300deca4a8ff627efe081e7b5b48b8d78810e6e7")
          (version (git-version "31.0.50" "1" commit)))
     (package
       (inherit emacs-next-pgtk)
@@ -81,7 +81,7 @@ and VT100 terminal support without a curses dependency.")
                (commit commit)))
          (file-name (git-file-name "emacs-next-next-pgtk" commit))
          (sha256
-          (base32 "0aa9jylmsbrdk2k4x7pd79bqjv91k68nxafbp74fwh3h56v5hvbs")))))))
+          (base32 "02lammv53r1845gxac1y773s7974wdi6xgnj6n5dvbxcx0hs15qf")))))))
 
 (define %emacs-wlshm-cargo-lock
   (or (search-path %load-path "trev-guix/files/emacs-wlshm-Cargo.lock")
@@ -93,7 +93,7 @@ and VT100 terminal support without a curses dependency.")
   ;; --with-wlshm flag, and the backend's extra build inputs.  The build also
   ;; compiles a small Rust staticlib via cargo, so we vendor its crate
   ;; dependencies (from Cargo.lock) and build cargo offline.
-  (let* ((commit "37f031c253dae46503c816d7caeacbd62f271130")
+  (let* ((commit "fea4a697340f66428afbe9f87f7f3abe4c1d43f6")
          (version (git-version "31.0.50" "0" commit)))
     (package
       (inherit emacs-next)
@@ -108,7 +108,7 @@ and VT100 terminal support without a curses dependency.")
                (commit commit)))
          (file-name (git-file-name "emacs-wlshm" commit))
          (sha256
-          (base32 "0wi5ra16a2fh6qyfq6r527a75c07v0wn9dk3882svvlsvj01ivg7"))))
+          (base32 "0syc9p519ibqjq36sabs82gwygjpphdfcnsdckw1v9pz20mcq4mi"))))
       (arguments
        (substitute-keyword-arguments (package-arguments emacs-next)
          ((#:tests? tests? #f)
