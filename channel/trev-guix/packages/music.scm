@@ -26,13 +26,14 @@
     (build-system pyproject-build-system)
     (arguments
      (list
-      #:tests? #f ; test suite hits the live YouTube Music API
+      #:tests? #f ;test suite hits the live YouTube Music API
       #:phases
       #~(modify-phases %standard-phases
           ;; setuptools_scm derives the version from git, which the sdist lacks.
           (add-before 'build 'set-scm-version
             (lambda _
-              (setenv "SETUPTOOLS_SCM_PRETEND_VERSION" #$version))))))
+              (setenv "SETUPTOOLS_SCM_PRETEND_VERSION"
+                      #$version))))))
     (native-inputs (list python-setuptools python-setuptools-scm python-wheel))
     (propagated-inputs (list python-requests))
     (home-page "https://github.com/sigma67/ytmusicapi")
@@ -63,22 +64,27 @@ sources.")
       (build-system pyproject-build-system)
       ;; Only the pure unit tests run offline; the smoke tests need network, so
       ;; skip the suite at build time.
-      (arguments (list #:tests? #f))
+      (arguments
+       (list
+        #:tests? #f))
       (native-inputs (list python-hatchling))
-      (propagated-inputs
-       (list python-textual
-             python-musicbrainzngs
-             python-mutagen
-             python-rapidfuzz
-             python-ytmusicapi
-             python-platformdirs
-             python-httpx
-             python-requests
-             yt-dlp
-             beets
-             ffmpeg))
+      (propagated-inputs (list python-confuse
+                               python-textual
+                               python-musicbrainzngs
+                               python-mutagen
+                               python-rapidfuzz
+                               python-ytmusicapi
+                               python-platformdirs
+                               python-httpx
+                               python-requests
+                               python-unidecode
+                               yt-dlp
+                               beets
+                               python-mediafile
+                               ffmpeg))
       (home-page "https://github.com/trevarj/yoink")
-      (synopsis "TUI music browser that downloads full albums from YouTube Music")
+      (synopsis
+       "TUI music browser that downloads full albums from YouTube Music")
       (description
        "yoink is a terminal music browser: browse MusicBrainz, queue full albums,
 and a background worker crawls YouTube Music and downloads each track with
