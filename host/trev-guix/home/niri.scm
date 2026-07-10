@@ -31,6 +31,7 @@
                                                               "wallpapers"
                                                               "X"
                                                               "mpd"
+                                                              "mpv"
                                                               "rmpc"))
                                                   (excluded '("\\.zshenv"
                                                               "\\.zshrc"
