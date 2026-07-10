@@ -107,6 +107,7 @@
                    gnu-standards
                    guile-next
                    guixboy
+                   guix-weather-plus
                    headsetcontrol
                    hicolor-icon-theme
                    imv

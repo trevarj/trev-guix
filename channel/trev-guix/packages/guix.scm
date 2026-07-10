@@ -61,3 +61,32 @@ maintenance workflows, including configured reconfiguration targets, update
 checks, substitute URL aliases, garbage-collection recipes, profile discovery,
 and beginner-oriented explanations.")
     (license license:gpl3+)))
+
+
+(define-public guix-weather-plus
+  (package
+    (name "guix-weather-plus")
+    (version "0.1.0")
+    ;; Local source until the project has a published Git remote; keep this
+    ;; package shaped like the other Guix extension packages so switching to
+    ;; git-fetch is mechanical.
+    (source (local-file "/home/trev/Workspace/guix-weather-plus"
+                        #:recursive? #t))
+    (build-system copy-build-system)
+    (arguments
+     (list
+      #:install-plan
+      #~'(("guix/extensions/weather-plus.scm"
+           "share/guix/extensions/weather-plus.scm")
+          ("README.md" "share/doc/guix-weather-plus/README.md"))))
+    (native-search-paths
+     (list (search-path-specification
+            (variable "GUIX_EXTENSIONS_PATH")
+            (files '("share/guix/extensions")))))
+    (home-page "https://example.invalid/guix-weather-plus")
+    (synopsis "Estimate whether guix pull will have substitutes")
+    (description
+     "Guix Weather Plus is a Guix extension that estimates whether a normal
+Guix pull followed by system or home reconfiguration is likely to use available
+substitutes instead of local builds.")
+    (license license:gpl3+)))
