@@ -47,7 +47,7 @@ sources.")
 
 (define-public yoink
   (let* ((commit "eda3beb7c5b2e7ee55a313a02f5460fc54db26d1")
-         (revision "1")
+         (revision "2")
          (version (git-version "0.2.3" revision commit)))
     (package
       (name "yoink")
