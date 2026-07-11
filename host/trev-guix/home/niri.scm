@@ -32,7 +32,8 @@
                                                               "X"
                                                               "mpd"
                                                               "mpv"
-                                                              "rmpc"))
+                                                              "rmpc"
+                                                              "yt-dlp"))
                                                   (excluded '("\\.zshenv"
                                                               "\\.zshrc"
                                                               "\\.zprofile"))))
