@@ -28,7 +28,8 @@
                                                                 %dotfiles-directory))
                                                   (layout 'stow)
                                                   (packages '("agents"
-                                                              "zsh" "guix"
+                                                              "git" "zsh"
+                                                              "guix"
                                                               "mail" "mpd"
                                                               "rmpc"))
                                                   (excluded '("\\.zshenv"
