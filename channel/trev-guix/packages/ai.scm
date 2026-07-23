@@ -59,7 +59,7 @@ as well as a library of pre-built models that can be easily used.")
 (define-public opencode
   (package
     (name "opencode")
-    (version "1.17.8")
+    (version "1.18.3")
     (source
      (origin
        (method url-fetch)
@@ -67,7 +67,7 @@ as well as a library of pre-built models that can be easily used.")
              "https://github.com/anomalyco/opencode/releases/download/v"
              version "/opencode-linux-x64.tar.gz"))
        (sha256
-        (base32 "0pqy5f33v4xz3c89r08j4r6dkkq4p2k7wxqlglmld4vh48lzrzqk"))))
+        (base32 "10s5m1y5237ahn149qk6kj6zbyla8h17xy9rcldm22phg4k7pwk0"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -110,7 +110,7 @@ auto-updates for reproducibility and bundles fzf and ripgrep in PATH.")
 (define-public codex
   (package
     (name "codex")
-    (version "0.144.1")
+    (version "0.146.0-alpha.4")
     (source
      (origin
        (method url-fetch)
@@ -118,7 +118,7 @@ auto-updates for reproducibility and bundles fzf and ripgrep in PATH.")
              "https://github.com/openai/codex/releases/download/rust-v"
              version "/codex-x86_64-unknown-linux-musl.tar.gz"))
        (sha256
-        (base32 "0a2s9yyyphkq3iwgn2bnkkgzhzvxsldpvf8d2bacgz351ki1l2c4"))))
+        (base32 "1h910k7fqz18b1w656xh8m3zn0i5g9l170dyw4fh2i5p2djvhhhs"))))
     (build-system binary-build-system)
     (propagated-inputs (list bubblewrap))
     (arguments
@@ -145,7 +145,8 @@ automated coding assistance.")
        (uri (string-append "https://storage.googleapis.com/claude-code-dist-"
              "86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/"
              version "/linux-x64/claude"))
-       (hash (content-hash "02avzvmmz66rf0a3z8rp0fxk0z1rggjq8la22wfzw0x5nv0391yx"))))
+       (hash (content-hash
+              "02avzvmmz66rf0a3z8rp0fxk0z1rggjq8la22wfzw0x5nv0391yx"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -216,10 +217,10 @@ handle entire workflows.  This package disables auto-updates.")
               ;; gac uses bash arrays + `local`, so pin its shebang to the
               ;; store bash (no /usr/bin/env in a pure Guix profile).
               (let* ((bash (search-input-file inputs "bin/bash"))
-                     (gac (string-append (assoc-ref outputs "out")
-                                         "/bin/gac")))
+                     (gac (string-append (assoc-ref outputs "out") "/bin/gac")))
                 (substitute* gac
-                  (("^#!.*") (string-append "#!" bash "\n")))
+                  (("^#!.*")
+                   (string-append "#!" bash "\n")))
                 (chmod gac #o755)))))))
     (inputs (list bash-minimal))
     (home-page "https://github.com/trevarj/guix-agent-container")
