@@ -19,8 +19,7 @@
                                                          (directories (list
                                                                        %dotfiles-directory))
                                                          (layout 'stow)
-                                                         (packages '("agents"
-                                                                     "git"
+                                                         (packages '("git"
                                                                      "zsh"
                                                                      "guix"
                                                                      "guixboy"
