@@ -6,7 +6,8 @@
   #:use-module (guix utils)
   #:use-module (guix build-system gnu)
   #:use-module (guix import crate)
-  #:use-module ((guix licenses) #:prefix license:)
+  #:use-module ((guix licenses)
+                #:prefix license:)
   #:use-module (gnu packages)
   #:use-module (gnu packages bash)
   #:use-module (gnu packages emacs)
@@ -34,8 +35,10 @@
       (arguments
        (list
         #:make-flags
-        #~(list (string-append "CC=" #$(cc-for-target))
-                (string-append "prefix=" #$output))
+        #~(list (string-append "CC="
+                               #$(cc-for-target))
+                (string-append "prefix="
+                               #$output))
         #:test-target "check"
         #:phases
         #~(modify-phases %standard-phases
@@ -45,8 +48,7 @@
                 (substitute* "src/shell.c"
                   (("\"/bin/sh\"")
                    (string-append "\""
-                                  (search-input-file inputs "/bin/sh")
-                                  "\"")))))
+                                  (search-input-file inputs "/bin/sh") "\"")))))
             (add-after 'unpack 'do-not-strip-during-install
               (lambda _
                 (substitute* "Makefile"
@@ -54,34 +56,13 @@
                    "install -m 755")))))))
       (inputs (list bash-minimal))
       (home-page "https://github.com/troglobit/kg")
-      (synopsis "Lightweight UTF-8 terminal text editor with Emacs keybindings")
+      (synopsis
+       "Lightweight UTF-8 terminal text editor with Emacs keybindings")
       (description
        "kg is a small terminal text editor with pure Emacs-style keybindings,
 syntax highlighting, multiple buffers, split windows, incremental search, undo,
 and VT100 terminal support without a curses dependency.")
       (license license:bsd-2))))
-
-(define-public emacs-next-next-pgtk
-  (let* ((commit "300deca4a8ff627efe081e7b5b48b8d78810e6e7")
-         (version (git-version "31.0.50" "1" commit)))
-    (package
-      (inherit emacs-next-pgtk)
-      (name "emacs-next-next-pgtk")
-      (version version)
-      (arguments
-       (substitute-keyword-arguments (package-arguments emacs-next-pgtk)
-         ((#:tests? tests? #f)
-          #f)))
-      (source
-       (origin
-         (inherit (package-source emacs-next-minimal))
-         (method git-fetch)
-         (uri (git-reference
-               (url "https://github.com/emacs-mirror/emacs.git")
-               (commit commit)))
-         (file-name (git-file-name "emacs-next-next-pgtk" commit))
-         (sha256
-          (base32 "02lammv53r1845gxac1y773s7974wdi6xgnj6n5dvbxcx0hs15qf")))))))
 
 (define %emacs-wlshm-cargo-lock
   (or (search-path %load-path "trev-guix/files/emacs-wlshm-Cargo.lock")
