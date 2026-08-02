@@ -91,6 +91,7 @@
                    font-google-noto
                    font-google-noto-emoji
                    font-google-noto-sans-cjk
+                   font-iosevka-ss12
                    font-nerd-symbols
                    font-terminus
                    forgejo-cli
