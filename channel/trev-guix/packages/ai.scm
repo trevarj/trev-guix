@@ -110,7 +110,7 @@ auto-updates for reproducibility and bundles fzf and ripgrep in PATH.")
 (define-public codex
   (package
     (name "codex")
-    (version "0.146.0-alpha.4")
+    (version "0.147.0-alpha.1.1")
     (source
      (origin
        (method url-fetch)
@@ -118,7 +118,7 @@ auto-updates for reproducibility and bundles fzf and ripgrep in PATH.")
              "https://github.com/openai/codex/releases/download/rust-v"
              version "/codex-x86_64-unknown-linux-musl.tar.gz"))
        (sha256
-        (base32 "1h910k7fqz18b1w656xh8m3zn0i5g9l170dyw4fh2i5p2djvhhhs"))))
+        (base32 "1wb3y1qvb25pivssqjxhlzwxd8k8zx98f3p29d0z70mrifanhjgm"))))
     (build-system binary-build-system)
     (propagated-inputs (list bubblewrap))
     (arguments
@@ -138,15 +138,14 @@ automated coding assistance.")
 (define-public claude-code
   (package
     (name "claude-code")
-    (version "2.1.205")
+    (version "2.1.220")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://storage.googleapis.com/claude-code-dist-"
              "86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/"
              version "/linux-x64/claude"))
-       (hash (content-hash
-              "02avzvmmz66rf0a3z8rp0fxk0z1rggjq8la22wfzw0x5nv0391yx"))))
+       (hash (content-hash "0qy8i4m996w1952qiwmynmw05dy46r60w87r1h8g61pk1zr62kv7"))))
     (build-system binary-build-system)
     (arguments
      (list
