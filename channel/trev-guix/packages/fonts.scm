@@ -19,19 +19,6 @@
               (canonicalize-path candidate)
               (loop (cdr dirs)))))))
 
-(define-public font-iosevka-jbm
-  (package
-    (name "font-iosevka-jbm")
-    (version "1.0.0")
-    (source
-     (local-file (trev-guix-file "fonts-IosevkaJbm")
-                 #:recursive? #t))
-    (build-system font-build-system)
-    (description "My custom Iosevka font inspired by JetBrains Mono.")
-    (home-page "https://www.nerdfonts.com/")
-    (synopsis "Jetbrains Mono Iosevka variant")
-    (license license:expat)))
-
 (define-public font-cryptofont
   (package
     (name "font-cryptofonts")

@@ -278,8 +278,7 @@ With no PACKAGE arguments, update every package with a configured update rule.
                        #f)))
 
 (define report-only-packages
-  '(("font-iosevka-jbm" . "report-only: local-file package")
-    ("font-cryptofont" . "report-only: local-file package")
+  '(("font-cryptofont" . "report-only: local-file package")
     ("mail-scripts" . "report-only: local scripts package")
     ("pinentry-fuzzguy" . "report-only: local-file package")))
 
