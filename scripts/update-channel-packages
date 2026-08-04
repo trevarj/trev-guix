@@ -275,12 +275,19 @@ With no PACKAGE arguments, update every package with a configured update rule.
                        "master"
                        "0.1.0"
                        #f
+                       #f)
+   (git-branch-package "pinentry-fuzzguy"
+                       '(trev-guix packages desktop)
+                       'pinentry-fuzzguy
+                       "channel/trev-guix/packages/desktop.scm"
+                       "master"
+                       "1.0.0"
+                       #f
                        #f)))
 
 (define report-only-packages
   '(("font-cryptofont" . "report-only: local-file package")
-    ("mail-scripts" . "report-only: local scripts package")
-    ("pinentry-fuzzguy" . "report-only: local-file package")))
+    ("mail-scripts" . "report-only: local scripts package")))
 
 (define (custom-package-names)
   (map custom-package-name custom-packages))
