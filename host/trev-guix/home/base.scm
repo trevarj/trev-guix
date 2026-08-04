@@ -144,8 +144,45 @@
                    zsh-completions
                    zsh-syntax-highlighting))
 
+           ;; Guix has no home-mpd-service-type (only home-beets in (gnu home
+           ;; services music)), so the config and the daemon are declared here.
+           ;; The Nix host gets the equivalent from Home Manager's services.mpd.
+           (define %mpd-configuration-file
+             (plain-file "mpd.conf"
+                         "\
+music_directory \"~/Music\"
+playlist_directory \"~/.local/share/mpd/playlists\"
+db_file \"~/.cache/mpd/database\"
+state_file \"~/.cache/mpd/state\"
+sticker_file \"~/.cache/mpd/sticker.sql\"
+log_file \"~/.cache/mpd/log\"
+bind_to_address \"127.0.0.1\"
+port \"6600\"
+auto_update \"yes\"
+restore_paused \"yes\"
+audio_output {
+  type \"pipewire\"
+  name \"PipeWire\"
+}
+"))
+
+           ;; Unlike the niri session daemons this needs no Wayland session, so
+           ;; it auto-starts with Shepherd.  It expects ~/.cache/mpd and
+           ;; ~/.local/share/mpd/playlists to exist; mpd does not create them.
+           (define %mpd-shepherd-service
+             (shepherd-service (provision '(mpd))
+                               (documentation "Run the MPD music daemon.")
+                               (respawn? #t)
+                               (start #~(make-forkexec-constructor
+                                         (list "mpd" "--no-daemon"
+                                               #$%mpd-configuration-file)))
+                               (stop #~(make-kill-destructor))))
+
            (define-public %home-base-services
              (list (service home-dbus-service-type)
+                   (simple-service 'mpd
+                                   home-shepherd-service-type
+                                   (list %mpd-shepherd-service))
                    (service home-pipewire-service-type)
                    (service home-zsh-service-type
                             (home-zsh-configuration (xdg-flavor? #f)
