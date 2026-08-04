@@ -5,7 +5,7 @@
 
 (define-public %home-fontconfig-service-extension
   (simple-service 'home-fontconfig-extension home-fontconfig-service-type
-                  (list (let ((prefer '(prefer (family "Iosevka JBM")
+                  (list (let ((prefer '(prefer (family "Iosevka")
                                                (family
                                                 "Symbols Nerd Font Mono"))))
                           `((alias (@ (binding "strong"))
