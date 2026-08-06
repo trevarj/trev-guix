@@ -2,11 +2,12 @@
   #:use-module (gnu packages)
   #:use-module (gnu packages freedesktop)
   #:use-module (gnu packages gnupg)
+  #:use-module (gnu packages llvm)
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages python)
   #:use-module (gnu packages rust)
   #:use-module (gnu packages vulkan)
-  #:use-module (gnu packages wm)
+  #:use-module (gnu packages window-management)
   #:use-module (gnu packages xdisorg)
   #:use-module (guix build-system cargo)
   #:use-module (guix build-system copy)
@@ -22,9 +23,9 @@
   (or (search-path %load-path "trev-guix/files/spacesniffer1000-Cargo.lock")
       (error "could not find spacesniffer1000-Cargo.lock in load path")))
 
-(define %gnome-topbar-cargo-lock
-  (or (search-path %load-path "trev-guix/files/gnome-topbar-Cargo.lock")
-      (error "could not find gnome-topbar-Cargo.lock in load path")))
+(define %topbar-cargo-lock
+  (or (search-path %load-path "trev-guix/files/topbar-Cargo.lock")
+      (error "could not find topbar-Cargo.lock in load path")))
 
 (define-public spacesniffer1000
   (package
@@ -52,26 +53,44 @@
 usage with a clickable treemap.")
     (license license:expat)))
 
-(define-public gnome-topbar
+(define-public topbar
   (package
-    (name "gnome-topbar")
-    (version "1.0.0-0eb98d5")
+    (name "topbar")
+    (version "2.0.0-904b7c4")
     (source
      (origin
        (method git-fetch)
        (uri (git-reference
-             (url "https://github.com/trevarj/gnome-topbar.git")
-             (commit "0eb98d5154bc6de270d5ebc8444f048c7c72785b")))
+             (url "https://github.com/trevarj/topbar.git")
+             (commit "904b7c4120888f25544b6aec135a5da1d69200b9")))
        (file-name (git-file-name name version))
-       (hash (content-hash
-              "1yd0628qjmmsxkv2rsmjwm8vhqprsv9a4as6kxp2b8b53h8sb6j0"))))
+       (hash (content-hash "0bxz169mnxxg4afdhb1l6bgjdmwwhp1lgrs8w1wfczybfv0a30sp"))))
     (build-system cargo-build-system)
     (arguments
      (list
       #:install-source? #f
-      #:cargo-install-paths ''("crates/gnome-topbar")))
-    (native-inputs (list pkg-config))
-    (inputs (append (cargo-inputs-from-lockfile %gnome-topbar-cargo-lock)
+      #:cargo-install-paths ''("crates/topbar")
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'patch-test-fixture-shebang
+            (lambda _
+              ;; The headset test writes a fake tool and execs it, but the
+              ;; build container has no /bin/sh for its shebang to resolve.
+              (substitute* "crates/topbar-services/src/headset/task.rs"
+                (("#!/bin/sh")
+                 (string-append "#!" (which "sh"))))))
+          (add-before 'build 'set-bindgen-clang-path
+            (lambda* (#:key native-inputs inputs #:allow-other-keys)
+              ;; libspa-sys generates the PipeWire bindings with bindgen, which
+              ;; dlopens libclang instead of shelling out to clang.
+              (setenv "LIBCLANG_PATH"
+                      (dirname (search-input-file (or native-inputs inputs)
+                                                  "lib/libclang.so"))))))))
+    ;; Pin the clang major version: the unversioned `clang' tracks the newest
+    ;; LLVM, which regularly lacks substitutes and would drag a multi-hour
+    ;; source build into every rebuild of this package.
+    (native-inputs (list clang-20 pkg-config))
+    (inputs (append (cargo-inputs-from-lockfile %topbar-cargo-lock)
                     (map specification->package
                          '("gtk" "gtk4-layer-shell"
                            "glib"
@@ -81,16 +100,17 @@ usage with a clickable treemap.")
                            "gdk-pixbuf"
                            "cairo"
                            "graphene"
+                           "pipewire"
                            "pulseaudio"
                            "upower"
                            "network-manager"
                            "bluez"))))
-    (home-page "https://github.com/trevarj/gnome-topbar")
+    (home-page "https://github.com/trevarj/topbar")
     (synopsis "GNOME Shell-inspired GTK top bar for Wayland")
     (description
-     "GNOME Topbar is a Wayland-only GTK top bar inspired by GNOME Shell.  It
-provides a continuous system panel with notifications, quick settings, media
-controls, workspaces, and custom script modules.")
+     "Topbar is a Wayland-only GTK top bar inspired by GNOME Shell.  It provides
+a continuous system panel with notifications, quick settings, media controls,
+workspaces, and custom script modules.")
     (license license:expat)))
 
 (define-public pinentry-fuzzguy

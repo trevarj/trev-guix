@@ -260,14 +260,14 @@ With no PACKAGE arguments, update every package with a configured update rule.
                        "0.1.0"
                        "Cargo.lock"
                        "channel/trev-guix/files/spacesniffer1000-Cargo.lock")
-   (git-branch-package "gnome-topbar"
+   (git-branch-package "topbar"
                        '(trev-guix packages desktop)
-                       'gnome-topbar
+                       'topbar
                        "channel/trev-guix/packages/desktop.scm"
-                       "master"
-                       "1.0.0"
+                       "v2"
+                       "2.0.0"
                        "Cargo.lock"
-                       "channel/trev-guix/files/gnome-topbar-Cargo.lock")
+                       "channel/trev-guix/files/topbar-Cargo.lock")
    (git-branch-package "guixboy"
                        '(trev-guix packages guix)
                        'guixboy

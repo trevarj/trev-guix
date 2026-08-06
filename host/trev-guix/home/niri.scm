@@ -27,7 +27,7 @@ already covers both the home and system profiles."
                     (stop #~(make-kill-destructor))))
 
 (define %niri-session-daemons
-  (list (graphical-daemon 'gnome-topbar '("gnome-topbar"))
+  (list (graphical-daemon 'topbar '("topbar"))
         (graphical-daemon 'hypridle '("hypridle"))
         (graphical-daemon 'awww-normal '("awww-daemon" "-n" "normal"))
         (graphical-daemon 'awww-overview '("awww-daemon" "-n" "overview"))))
@@ -47,7 +47,7 @@ already covers both the home and system profiles."
                                                                      "guix"
                                                                      "guixboy"
                                                                      "niri"
-                                                                     "gnome-topbar"
+                                                                     "topbar"
                                                                      "icons"
                                                                      "fuzzel"
                                                                      "gnupg"

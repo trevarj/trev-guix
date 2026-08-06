@@ -35,7 +35,6 @@
                      cava
                      cliphist
                      fuzzel
-                     gnome-topbar
                      hypridle
                      hyprlock
                      hyprpaper
@@ -45,6 +44,7 @@
                      pipewire
                      rygel
                      swaybg
+                     topbar
                      udiskie
                      wireplumber
                      wlsunset
