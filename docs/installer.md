@@ -21,6 +21,40 @@ installer, dotfiles, Nonguix firmware support, the channel configuration, and
 the configured substitute URLs, but it does not embed the target desktop
 closure or copy the `trev-guix` checkout into the installed system.
 
+## Channel Authentication
+
+For a standalone subscription to this channel alongside the default Guix
+channel, run from this checkout:
+
+```sh
+guix pull -C channels.scm
+```
+
+For an existing channel configuration, keep its other entries and replace
+only the `trev-guix` introduction commit with
+`439e18c6c251eaaab26d74eabb8f32150d3dca2a`.  The signing fingerprint remains
+`A6C2 0D0C 2AD8 38F9 4907  0EA3 A52D 6879 4EBE D758`.
+The channel may be named `trevarj` in older configurations.
+
+The introduction `007f92ff81ae528d942edfd8a3d4f2d41c369c5e` published by
+the [channel directory](https://toys.whereis.social/channels?show=trev-guix)
+is no longer in this repository's history.  The replacement is the first
+signed commit in the current authenticated history.  Do not disable channel
+authentication to work around the missing commit.
+
+To verify the authentication chain without building or pulling Guix:
+
+```sh
+git fetch origin master keyring
+guix git authenticate \
+  439e18c6c251eaaab26d74eabb8f32150d3dca2a \
+  'A6C2 0D0C 2AD8 38F9 4907 0EA3 A52D 6879 4EBE D758' \
+  --keyring=origin/keyring
+```
+
+Keep the introduction commit and its signed descendants in published
+history; rewriting them breaks existing subscribers.
+
 ## Write To USB
 
 Build and write the ISO in one command:
